@@ -163,7 +163,7 @@ const Candidates = () => {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(2, 6, 23, 0.8)',
+          background: 'var(--modal-overlay)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -221,19 +221,21 @@ const Candidates = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <section className="glass" style={{ padding: '1.5rem', borderRadius: '20px' }}>
-                  <h4 style={{ marginBottom: '1.25rem', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Intelligence Tags</h4>
+                  <h4 style={{ marginBottom: '1.25rem', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-main)', fontWeight: '600' }}>Intelligence Tags</h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {selectedCandidate.skills.map(s => (
                       <span key={s} style={{ 
                         fontSize: '0.75rem', 
-                        padding: '0.35rem 0.85rem', 
+                        padding: '0.4rem 0.9rem', 
                         borderRadius: '20px', 
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        color: 'var(--primary)',
-                        border: '1px solid rgba(59, 130, 246, 0.2)'
+                        background: 'var(--primary)', 
+                        color: 'white',
+                        fontWeight: '500',
+                        boxShadow: '0 4px 10px rgba(59, 130, 246, 0.2)'
                       }}>{s}</span>
                     ))}
                   </div>
+
                 </section>
 
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

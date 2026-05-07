@@ -13,20 +13,31 @@ import {
 import Overview from '../components/Overview';
 import CVIngestion from '../components/CVIngestion';
 import Candidates from '../components/Candidates';
+import GraphSearch from '../components/GraphSearch';
+import Notifications from '../components/Notifications';
 import ThemeToggle from '../components/ThemeToggle';
+import NotificationDropdown from '../components/NotificationDropdown';
+
+
+
 
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const renderContent = () => {
+
     switch (activeTab) {
       case 'dashboard': return <Overview />;
       case 'upload': return <CVIngestion />;
       case 'candidates': return <Candidates />;
-      case 'search': return <div className="glass animate-fade" style={{ padding: '4rem', borderRadius: '24px', textAlign: 'center' }}><Search size={48} color="var(--text-muted)" style={{ marginBottom: '1rem' }} /><h3>Knowledge Graph Search</h3><p style={{ color: 'var(--text-muted)' }}>Graph visualization coming soon...</p></div>;
+      case 'search': return <GraphSearch />;
+      case 'notifications': return <Notifications />;
+
       default: return <Overview />;
+
     }
   };
 
@@ -72,7 +83,9 @@ const Dashboard = () => {
           <NavItem icon={<FileUp size={20} />} label="CV Ingestion" active={activeTab === 'upload'} onClick={() => { setActiveTab('upload'); setIsMobileMenuOpen(false); }} />
           <NavItem icon={<Users size={20} />} label="Candidates" active={activeTab === 'candidates'} onClick={() => { setActiveTab('candidates'); setIsMobileMenuOpen(false); }} />
           <NavItem icon={<Search size={20} />} label="Graph Search" active={activeTab === 'search'} onClick={() => { setActiveTab('search'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<Bell size={20} />} label="Notifications" active={activeTab === 'notifications'} onClick={() => { setActiveTab('notifications'); setIsMobileMenuOpen(false); }} />
         </nav>
+
 
         <div style={{ marginTop: 'auto' }}>
           <div className="glass-hover" style={{
@@ -114,17 +127,45 @@ const Dashboard = () => {
             </button>
             <div>
               <h2 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
-                {activeTab === 'dashboard' ? 'Overview' : activeTab === 'upload' ? 'Ingestion' : activeTab === 'candidates' ? 'Intelligence Pool' : 'Graph Analysis'}
+                {activeTab === 'dashboard' ? 'Overview' : activeTab === 'upload' ? 'Ingestion' : activeTab === 'candidates' ? 'Intelligence Pool' : activeTab === 'notifications' ? 'Activity Feed' : 'Graph Analysis'}
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>SH-2026</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <ThemeToggle />
-            <div className="glass mobile-hidden" style={{ padding: '0.75rem', borderRadius: '12px', cursor: 'pointer' }}>
-              <Bell size={20} />
+            <div style={{ position: 'relative' }}>
+              <div className="glass glass-hover mobile-hidden" 
+                   onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                   style={{ padding: '0.75rem', borderRadius: '12px', cursor: 'pointer', position: 'relative' }}>
+                <Bell size={20} />
+                <span style={{ 
+                  position: 'absolute', 
+                  top: '-5px', 
+                  right: '-5px', 
+                  background: '#ef4444', 
+                  color: 'white', 
+                  fontSize: '0.65rem', 
+                  width: '18px', 
+                  height: '18px', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontWeight: '700',
+                  border: '2px solid var(--bg-darker)'
+                }}>1</span>
+              </div>
+              
+              <NotificationDropdown 
+                isOpen={isNotificationsOpen} 
+                onClose={() => setIsNotificationsOpen(false)} 
+                onSeeAll={() => { setActiveTab('notifications'); setIsNotificationsOpen(false); }}
+              />
             </div>
+
             <button className="primary-btn" onClick={() => setActiveTab('upload')}>
+
               <span className="mobile-hidden">+ Ingest Resumes</span>
               <span className="desktop-only" style={{ display: 'none' }}>+ Ingest</span>
             </button>
