@@ -5,14 +5,15 @@ const Overview = () => {
   return (
     <div className="overview animate-fade">
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+      <div className="mobile-grid-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
         <StatCard title="Parsed CVs" value="128" change="+12%" icon={<CheckCircle2 color="#22c55e" />} />
         <StatCard title="Active Interviews" value="14" change="3 pending" icon={<Clock color="#eab308" />} />
         <StatCard title="Neo4j Nodes" value="2,405" change="+84 today" icon={<Zap color="#3b82f6" />} />
       </div>
 
       {/* Content Area */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+      <div className="mobile-grid-1" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+
         {/* Main Activity */}
         <section className="glass" style={{ padding: '2rem', borderRadius: '24px' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>Recent Activity</h3>

@@ -103,32 +103,35 @@ const Candidates = () => {
             borderRadius: '20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '2rem',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
             cursor: 'pointer'
           }}>
             <div style={{ 
-              width: '60px', 
-              height: '60px', 
-              borderRadius: '16px', 
+              width: '50px', 
+              height: '50px', 
+              borderRadius: '14px', 
+              flexShrink: 0,
               background: 'linear-gradient(135deg, var(--primary), var(--accent))', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              fontSize: '1.5rem', 
+              fontSize: '1.25rem', 
               fontWeight: '600' 
             }}>
               {c.name.charAt(0)}
             </div>
             
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: '200px' }}>
               <h3 style={{ marginBottom: '0.25rem' }}>{c.name}</h3>
-              <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={14} /> {c.role}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Clock size={14} /> {c.experience}</span>
               </div>
             </div>
 
-            <div style={{ display: 'none', gap: '0.5rem', display: 'flex' }} className="skill-tags">
+            <div style={{ gap: '0.5rem', display: 'flex', flexWrap: 'wrap' }} className="skill-tags mobile-hidden">
+
               {c.skills.slice(0, 3).map(s => (
                 <span key={s} style={{ 
                   fontSize: '0.75rem', 
@@ -194,7 +197,8 @@ const Candidates = () => {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '2rem', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+            <div className="mobile-grid-1" style={{ padding: '2rem', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <section>
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--primary)' }}>

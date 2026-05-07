@@ -1,8 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500&family=Open+Sans:wght@400;600&display=swap');
 
 :root {
+  /* Typography */
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-ui: 'Open Sans', sans-serif;
+  
   /* Common Variables */
   --primary: #3b82f6;
+
   --primary-glow: rgba(59, 130, 246, 0.5);
   --accent: #8b5cf6;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -19,19 +25,23 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   --modal-overlay: rgba(2, 6, 23, 0.8);
+  --nav-active: #ffffff;
 }
+
 
 /* Light Mode */
 [data-theme='light'] {
   --bg-dark: #f1f5f9;
-  --bg-darker: #f8fafc;
+  --bg-darker: #ffffff;
   --text-main: #0f172a;
-  --text-muted: #64748b;
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(15, 23, 42, 0.1);
-  --card-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.08);
-  --modal-overlay: rgba(248, 250, 252, 0.8);
+  --text-muted: #475569;
+  --nav-active: var(--primary);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --card-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.15);
+  --modal-overlay: rgba(248, 250, 252, 0.9);
 }
+
 
 * {
   margin: 0;
@@ -40,7 +50,7 @@
 }
 
 body {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-body);
   background-color: var(--bg-darker);
   color: var(--text-main);
   overflow-x: hidden;
@@ -89,17 +99,19 @@ body {
 }
 
 h1, h2, h3, h4 {
+  font-family: var(--font-heading);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 button {
+  font-family: var(--font-ui);
   cursor: pointer;
   border: none;
   outline: none;
-  font-family: inherit;
   transition: var(--transition);
 }
+
 
 .primary-btn {
   background: var(--primary);
@@ -120,3 +132,16 @@ input::placeholder {
   color: var(--text-muted);
   opacity: 0.6;
 }
+
+/* Responsive Utilities */
+@media (max-width: 1024px) {
+  .desktop-only { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  .mobile-stack { flex-direction: column !important; }
+  .mobile-grid-1 { grid-template-columns: 1fr !important; }
+  .mobile-hidden { display: none !important; }
+  .mobile-padding { padding: 1.5rem !important; }
+}
+

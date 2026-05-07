@@ -6,8 +6,10 @@ import {
   Zap, 
   Search, 
   Bell, 
-  User
+  User,
+  Menu
 } from 'lucide-react';
+
 import Overview from '../components/Overview';
 import CVIngestion from '../components/CVIngestion';
 import Candidates from '../components/Candidates';
@@ -16,6 +18,7 @@ import ThemeToggle from '../components/ThemeToggle';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -28,31 +31,47 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard-container" style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="dashboard-container" style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90, backdropFilter: 'blur(4px)' }}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="glass" style={{
+      <aside className={`glass ${isMobileMenuOpen ? 'mobile-menu-active' : ''}`} style={{
         width: '260px',
         borderRight: '1px solid var(--glass-border)',
         padding: '2rem 1.5rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '2rem',
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
-        height: '100vh'
+        bottom: 0,
+        left: isMobileMenuOpen ? 0 : '-260px',
+        height: '100vh',
+        zIndex: 100,
+        transition: 'left 0.3s ease',
+        background: 'var(--bg-darker)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.5rem' }}>
-          <div style={{ background: 'var(--primary)', padding: '0.5rem', borderRadius: '8px' }}>
-            <Zap size={20} color="white" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '0.5rem' }}>
+            <div style={{ background: 'var(--primary)', padding: '0.5rem', borderRadius: '8px' }}>
+              <Zap size={20} color="white" />
+            </div>
+            <span style={{ fontWeight: '600', fontSize: '1.25rem' }}>SmartHire</span>
           </div>
-          <span style={{ fontWeight: '600', fontSize: '1.25rem' }}>SmartHire</span>
+          <button className="desktop-only" style={{ display: 'none' }}></button>
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <NavItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          <NavItem icon={<FileUp size={20} />} label="CV Ingestion" active={activeTab === 'upload'} onClick={() => setActiveTab('upload')} />
-          <NavItem icon={<Users size={20} />} label="Candidates" active={activeTab === 'candidates'} onClick={() => setActiveTab('candidates')} />
-          <NavItem icon={<Search size={20} />} label="Graph Search" active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
+          <NavItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<FileUp size={20} />} label="CV Ingestion" active={activeTab === 'upload'} onClick={() => { setActiveTab('upload'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<Users size={20} />} label="Candidates" active={activeTab === 'candidates'} onClick={() => { setActiveTab('candidates'); setIsMobileMenuOpen(false); }} />
+          <NavItem icon={<Search size={20} />} label="Graph Search" active={activeTab === 'search'} onClick={() => { setActiveTab('search'); setIsMobileMenuOpen(false); }} />
         </nav>
 
         <div style={{ marginTop: 'auto' }}>
@@ -64,7 +83,7 @@ const Dashboard = () => {
             gap: '0.75rem',
             cursor: 'pointer'
           }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
               <User size={20} style={{ margin: '0 auto' }} />
             </div>
             <div>
@@ -76,32 +95,70 @@ const Dashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, padding: '2rem 3rem' }}>
+      <main style={{ 
+        flex: 1, 
+        padding: '2rem 3rem',
+        marginLeft: '0', // Handle margin dynamically via CSS or style
+        paddingLeft: 'max(3rem, env(safe-area-inset-left))'
+      }} className="main-content">
         {/* Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
-              {activeTab === 'dashboard' ? 'Overview' : activeTab === 'upload' ? 'Ingestion' : activeTab === 'candidates' ? 'Intelligence Pool' : 'Graph Analysis'}
-            </h2>
-            <p style={{ color: 'var(--text-muted)' }}>Logged in as Mahima • System ID: SH-2026</p>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button 
+              className="glass" 
+              onClick={() => setIsMobileMenuOpen(true)}
+              style={{ padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              id="mobile-toggle"
+            >
+              <Menu size={24} />
+            </button>
+            <div>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
+                {activeTab === 'dashboard' ? 'Overview' : activeTab === 'upload' ? 'Ingestion' : activeTab === 'candidates' ? 'Intelligence Pool' : 'Graph Analysis'}
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>SH-2026</p>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <ThemeToggle />
-            <div className="glass" style={{ padding: '0.75rem', borderRadius: '12px', cursor: 'pointer' }}>
+            <div className="glass mobile-hidden" style={{ padding: '0.75rem', borderRadius: '12px', cursor: 'pointer' }}>
               <Bell size={20} />
             </div>
-            <button className="primary-btn" onClick={() => setActiveTab('upload')}>+ Ingest Resumes</button>
+            <button className="primary-btn" onClick={() => setActiveTab('upload')}>
+              <span className="mobile-hidden">+ Ingest Resumes</span>
+              <span className="desktop-only" style={{ display: 'none' }}>+ Ingest</span>
+            </button>
           </div>
         </header>
 
         {/* Dynamic Content */}
-        {renderContent()}
+        <div className="content-area">
+          {renderContent()}
+        </div>
       </main>
+
+      <style>{`
+        @media (min-width: 1025px) {
+          aside {
+            position: sticky !important;
+            left: 0 !important;
+          }
+          #mobile-toggle {
+            display: none !important;
+          }
+        }
+        @media (max-width: 1024px) {
+          main {
+            padding: 1.5rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
 const NavItem = ({ icon, label, active, onClick }) => (
+
   <div 
     onClick={onClick}
     className={`glass-hover ${active ? 'active-nav' : ''}`}
@@ -112,14 +169,16 @@ const NavItem = ({ icon, label, active, onClick }) => (
       padding: '0.875rem 1rem',
       borderRadius: '12px',
       cursor: 'pointer',
-      color: active ? 'white' : 'var(--text-muted)',
-      background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
-      border: active ? '1px solid var(--glass-border)' : '1px solid transparent'
+      color: active ? 'var(--nav-active)' : 'var(--text-muted)',
+      background: active ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+      border: active ? '1px solid var(--primary)' : '1px solid transparent',
+      fontWeight: active ? '600' : '400'
     }}
   >
     {icon}
-    <span style={{ fontSize: '0.95rem', fontWeight: active ? '500' : '400' }}>{label}</span>
+    <span style={{ fontSize: '0.95rem' }}>{label}</span>
   </div>
 );
+
 
 export default Dashboard;
