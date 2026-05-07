@@ -7,8 +7,11 @@ import {
   Search, 
   Bell, 
   User,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 
 import Overview from '../components/Overview';
 import CVIngestion from '../components/CVIngestion';
@@ -23,11 +26,18 @@ import NotificationDropdown from '../components/NotificationDropdown';
 
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
+  const handleLogout = () => {
+    // Clear session/tokens here if needed
+    navigate('/login');
+  };
+
   const renderContent = () => {
+
 
     switch (activeTab) {
       case 'dashboard': return <Overview />;
@@ -89,22 +99,43 @@ const Dashboard = () => {
 
         <div style={{ marginTop: 'auto' }}>
           <div className="glass-hover" style={{
-            padding: '1rem',
-            borderRadius: '12px',
+            padding: '0.75rem 1rem',
+            borderRadius: '16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
-            cursor: 'pointer'
+            justifyContent: 'space-between',
+            gap: '0.75rem'
           }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
-              <User size={20} style={{ margin: '0 auto' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
+                <User size={20} style={{ margin: '0 auto' }} />
+              </div>
+              <div>
+                <p style={{ fontSize: '0.875rem', fontWeight: '600' }}>Mahima</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Lead Frontend</p>
+              </div>
             </div>
-            <div>
-              <p style={{ fontSize: '0.875rem', fontWeight: '500' }}>Mahima</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Lead Frontend</p>
-            </div>
+            <button 
+              onClick={handleLogout}
+              className="glass-hover"
+              style={{ 
+                padding: '0.5rem', 
+                borderRadius: '8px', 
+                background: 'rgba(239, 68, 68, 0.1)', 
+                color: '#ef4444',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </div>
+
       </aside>
 
       {/* Main Content */}
