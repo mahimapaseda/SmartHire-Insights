@@ -1,18 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-dark: #0f172a;
-  --bg-darker: #020617;
+  /* Common Variables */
   --primary: #3b82f6;
   --primary-glow: rgba(59, 130, 246, 0.5);
   --accent: #8b5cf6;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-blur: blur(12px);
+}
+
+/* Dark Mode (Default) */
+[data-theme='dark'] {
+  --bg-dark: #0f172a;
+  --bg-darker: #020617;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --glass-bg: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(12px);
   --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --modal-overlay: rgba(2, 6, 23, 0.8);
+}
+
+/* Light Mode */
+[data-theme='light'] {
+  --bg-dark: #f1f5f9;
+  --bg-darker: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(15, 23, 42, 0.1);
+  --card-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.08);
+  --modal-overlay: rgba(248, 250, 252, 0.8);
 }
 
 * {
@@ -27,6 +45,7 @@ body {
   color: var(--text-main);
   overflow-x: hidden;
   min-height: 100vh;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 /* Glassmorphism utility */
@@ -36,11 +55,12 @@ body {
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
   box-shadow: var(--card-shadow);
+  transition: var(--transition);
 }
 
 .glass-hover:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--data-theme='dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)');
+  border-color: var(--primary);
   transform: translateY(-2px);
 }
 
@@ -66,10 +86,6 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--glass-border);
   border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
 }
 
 h1, h2, h3, h4 {
@@ -98,4 +114,9 @@ button {
   background: #2563eb;
   box-shadow: 0 0 30px var(--primary-glow);
   transform: scale(1.02);
+}
+
+input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
 }
