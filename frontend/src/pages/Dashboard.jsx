@@ -3,6 +3,7 @@ import {
   LayoutDashboard, FileUp, Users, Share2,
   Bell, Settings as SettingsIcon, HelpCircle, LogOut,
   Menu, X, Search, Mail, Camera, Mic, BarChart2,
+  ClipboardList
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Overview             from '../components/Overview';
@@ -19,6 +20,8 @@ import ResultAnalysis       from '../components/ResultAnalysis';
 import Settings             from '../components/Settings';
 import Help                 from '../components/Help';
 
+import RequirementsImport from '../components/RequirementsImport';
+
 /* SVG logo mark */
 const Logo = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
@@ -32,8 +35,8 @@ const Logo = () => (
 const MENU_NAV = [
   { id: 'dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
   { id: 'upload',        label: 'CV Ingestion', icon: FileUp },
+  { id: 'requirements',  label: 'Requirements', icon: ClipboardList },
   { id: 'candidates',    label: 'Candidates',   icon: Users },
-  { id: 'search',        label: 'Graph Search', icon: Share2 },
   { id: 'notifications', label: 'Notifications',icon: Bell, badge: 1 },
 ];
 
@@ -51,6 +54,7 @@ const GENERAL_NAV = [
 const PAGE_TITLES = {
   dashboard:     { title: 'Dashboard',          sub: 'AI-powered recruitment intelligence.' },
   upload:        { title: 'CV Ingestion',        sub: 'Upload and parse candidate resumes.' },
+  requirements:  { title: 'Requirements',       sub: 'Define and import recruiter requirements.' },
   candidates:    { title: 'Candidates',          sub: 'AI-ranked candidate intelligence pool.' },
   search:        { title: 'Graph Search',        sub: 'Explore the knowledge graph.' },
   notifications: { title: 'Notifications',       sub: 'Real-time activity feed.' },
@@ -96,6 +100,7 @@ const Dashboard = () => {
     switch (activeTab) {
       case 'dashboard':     return <Overview onIngest={() => goTo('upload')} />;
       case 'upload':        return <CVIngestion />;
+      case 'requirements':  return <RequirementsImport onComplete={() => goTo('candidates')} />;
       case 'candidates':    return <Candidates onSelectCandidate={setSelectedCandidate} />;
       case 'search':        return <MacroKnowledgeGraph />;
       case 'notifications': return <Notifications />;
@@ -107,6 +112,7 @@ const Dashboard = () => {
       default:              return <Overview onIngest={() => goTo('upload')} />;
     }
   };
+
 
   const meta = selectedCandidate
     ? { title: selectedCandidate.name, sub: 'Deep-dive graph analysis' }
@@ -342,7 +348,7 @@ const Dashboard = () => {
                 <button className="btn-primary" onClick={() => goTo('upload')}>
                   + Ingest CVs
                 </button>
-                <button className="btn-outline">
+                <button className="btn-outline" onClick={() => goTo('requirements')}>
                   Import Data
                 </button>
               </div>
