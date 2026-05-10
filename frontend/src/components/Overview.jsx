@@ -1,37 +1,6 @@
-import React from 'react';
-import { ArrowUpRight, FileCheck2, CalendarClock, Database, TrendingUp, ArrowUpRight as Arrow } from 'lucide-react';
-
-/* ── Stat data ── */
-const STATS = [
-  {
-    label: 'Parsed CVs',
-    value: '128',
-    delta: 'Increased from last month',
-    icon: FileCheck2,
-    featured: true,   // first card is dark green (matches image)
-  },
-  {
-    label: 'Active Interviews',
-    value: '14',
-    delta: 'Increased from last month',
-    icon: CalendarClock,
-    featured: false,
-  },
-  {
-    label: 'Neo4j Nodes',
-    value: '2,405',
-    delta: 'Increased from last month',
-    icon: Database,
-    featured: false,
-  },
-  {
-    label: 'Match Rate',
-    value: '94%',
-    delta: 'On target',
-    icon: TrendingUp,
-    featured: false,
-  },
-];
+import React, { useState, useEffect } from 'react';
+import { ArrowUpRight, FileCheck2, CalendarClock, Database, TrendingUp } from 'lucide-react';
+import { candidateStore } from '../utils/candidateStore';
 
 const ACTIVITY = [
   { name: 'Software Engineer CV',   status: 'Completed',  time: '2 min ago',  role: 'Full Stack' },
@@ -53,8 +22,22 @@ const STATUS_META = {
   Queued:     { cls: 'badge-muted',   label: 'Pending' },
 };
 
-const Overview = ({ onIngest }) => (
-  <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+const Overview = ({ onIngest }) => {
+  const [candidateCount, setCandidateCount] = useState(candidateStore.getAll().length);
+
+  useEffect(() => {
+    return candidateStore.subscribe(() => setCandidateCount(candidateStore.getAll().length));
+  }, []);
+
+  const STATS = [
+    { label: 'Parsed CVs',        value: String(candidateCount), delta: 'Increased from last month', icon: FileCheck2,    featured: true },
+    { label: 'Active Interviews', value: '14',                   delta: 'Increased from last month', icon: CalendarClock, featured: false },
+    { label: 'Neo4j Nodes',       value: String(candidateCount * 6 + 1200), delta: 'Increased from last month', icon: Database, featured: false },
+    { label: 'Match Rate',        value: '94%',                  delta: 'On target',                 icon: TrendingUp,    featured: false },
+  ];
+
+  return (
+    <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
     {/* ── Stats row ── */}
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1rem' }}
@@ -147,7 +130,8 @@ const Overview = ({ onIngest }) => (
       }
     `}</style>
   </div>
-);
+  );
+};
 
 /* ── Stat Card ── */
 const StatCard = ({ label, value, delta, icon: Icon, featured }) => (

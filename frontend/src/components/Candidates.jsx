@@ -1,72 +1,44 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search, MapPin, GraduationCap, Mail, Briefcase,
   Clock, ChevronRight, X, Star, Share2, MessageSquare,
+  Filter, SlidersHorizontal, Trash2,
 } from 'lucide-react';
-
-const CANDIDATES = [
-  {
-    id: 1,
-    name: 'Sarah Chen',
-    role: 'Full Stack Engineer',
-    match: 98,
-    skills: ['React', 'Node.js', 'Neo4j', 'Python', 'TypeScript'],
-    experience: '5 years',
-    location: 'San Francisco, CA',
-    education: 'M.S. Computer Science, Stanford',
-    email: 'sarah.chen@example.com',
-    summary: 'Experienced engineer specialising in high-performance web applications and graph database modelling. Strong background in React ecosystems and distributed systems.',
-    projects: ['FinTech Analytics Engine', 'Graph-based Social CRM'],
-    initials: 'SC',
-    gradient: 'linear-gradient(135deg, #6366f1, #06b6d4)',
-  },
-  {
-    id: 2,
-    name: 'James Wilson',
-    role: 'DevOps Lead',
-    match: 92,
-    skills: ['AWS', 'Docker', 'Kubernetes', 'Python', 'Terraform'],
-    experience: '8 years',
-    location: 'Austin, TX',
-    education: 'B.S. Information Technology, UT Austin',
-    email: 'j.wilson@example.com',
-    summary: 'Automation specialist focused on cloud infrastructure scalability and security. Expert in CI/CD pipeline optimisation and container orchestration.',
-    projects: ['Global CDN Migration', 'Zero-Downtime Deployment Suite'],
-    initials: 'JW',
-    gradient: 'linear-gradient(135deg, #10b981, #06b6d4)',
-  },
-  {
-    id: 3,
-    name: 'Elena Rodriguez',
-    role: 'AI Researcher',
-    match: 95,
-    skills: ['Python', 'PyTorch', 'NLP', 'TensorFlow', 'LLMs'],
-    experience: '4 years',
-    location: 'Boston, MA',
-    education: 'Ph.D. Artificial Intelligence, MIT',
-    email: 'elena.r@example.com',
-    summary: 'Research scientist dedicated to advancing Natural Language Processing. Published author in major AI conferences with a focus on transformer architectures.',
-    projects: ['Multi-modal LLM Evaluation', 'Sentiment Analysis at Scale'],
-    initials: 'ER',
-    gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-  },
-];
+import { candidateStore } from '../utils/candidateStore';
 
 const matchColor = (m) => m >= 95 ? 'var(--primary)' : m >= 85 ? 'var(--warning)' : 'var(--text-secondary)';
 
 const Candidates = ({ onSelectCandidate }) => {
-  const [query, setQuery]   = useState('');
-  const [modal, setModal]   = useState(null);
+  const [candidates, setCandidates] = useState(candidateStore.getAll());
+  const [query,    setQuery]   = useState('');
+  const [modal,    setModal]   = useState(null);
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [sortBy,   setSortBy]  = useState('match');
+
+  // Subscribe to store updates (new CVs parsed)
+  useEffect(() => {
+    return candidateStore.subscribe(() => setCandidates(candidateStore.getAll()));
+  }, []);
+
+  const roles = useMemo(() => {
+    const r = new Set(candidates.map(c => c.role));
+    return ['All', ...Array.from(r)];
+  }, [candidates]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return CANDIDATES.filter(c =>
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.role.toLowerCase().includes(q) ||
-      c.skills.some(s => s.toLowerCase().includes(q))
-    );
-  }, [query]);
+    return candidates
+      .filter(c =>
+        (roleFilter === 'All' || c.role === roleFilter) &&
+        (!q || c.name.toLowerCase().includes(q) || c.role.toLowerCase().includes(q) || c.skills.some(s => s.toLowerCase().includes(q)))
+      )
+      .sort((a, b) => sortBy === 'match' ? b.match - a.match : a.name.localeCompare(b.name));
+  }, [candidates, query, roleFilter, sortBy]);
+
+  const removeCandidate = (id, e) => {
+    e.stopPropagation();
+    candidateStore.remove(id);
+  };
 
   return (
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -76,32 +48,52 @@ const Candidates = ({ onSelectCandidate }) => {
         <div>
           <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Candidate Pool</h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            {CANDIDATES.length} profiles · AI-ranked by match score
+            {candidates.length} profiles · {filtered.length} shown · AI-ranked by match score
           </p>
         </div>
-
-        {/* Search */}
-        <div style={{ position: 'relative', width: '280px' }}>
-          <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-          <input
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Role filter */}
+          <select
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
             className="input"
-            type="text"
-            placeholder="Search name, role, skill…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            style={{ paddingLeft: '2.25rem' }}
-          />
+            style={{ width: 'auto', padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
+          >
+            {roles.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            className="input"
+            style={{ width: 'auto', padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
+          >
+            <option value="match">Sort: Match %</option>
+            <option value="name">Sort: Name A–Z</option>
+          </select>
+          {/* Search */}
+          <div style={{ position: 'relative' }}>
+            <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            <input
+              className="input"
+              type="text"
+              placeholder="Search name, role, skill…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              style={{ paddingLeft: '2.25rem', width: '220px' }}
+            />
+          </div>
         </div>
       </div>
 
       {/* List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
         {filtered.length === 0 ? (
-          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-            No candidates match "{query}"
+          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            {query || roleFilter !== 'All' ? `No candidates match your filters.` : 'No candidates yet. Upload CVs to get started.'}
           </div>
         ) : filtered.map(c => (
-          <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} />
+          <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} onRemove={removeCandidate} />
         ))}
       </div>
 
@@ -117,7 +109,7 @@ const Candidates = ({ onSelectCandidate }) => {
   );
 };
 
-const CandidateRow = ({ candidate: c, onClick }) => (
+const CandidateRow = ({ candidate: c, onClick, onRemove }) => (
   <div
     className="card"
     onClick={onClick}
@@ -126,7 +118,7 @@ const CandidateRow = ({ candidate: c, onClick }) => (
     {/* Avatar */}
     <div style={{
       width: '44px', height: '44px',
-      borderRadius: 'var(--radius-md)',
+      borderRadius: 'var(--r-md)',
       background: c.gradient,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '0.8rem', fontWeight: '800', color: '#fff',
@@ -149,13 +141,30 @@ const CandidateRow = ({ candidate: c, onClick }) => (
       {c.skills.length > 3 && <span className="skill-tag">+{c.skills.length - 3}</span>}
     </div>
 
+    {/* Source badge */}
+    {c.source && (
+      <span className="badge badge-muted hide-mobile" style={{ fontSize: '0.65rem' }}>
+        {c.source.split('.').pop().toUpperCase()}
+      </span>
+    )}
+
     {/* Match */}
     <div style={{ textAlign: 'right', minWidth: '64px', flexShrink: 0 }}>
       <p style={{ fontSize: '1.2rem', fontWeight: '800', color: matchColor(c.match), letterSpacing: '-0.03em' }}>{c.match}%</p>
-      <p style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>match</p>
+      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>match</p>
     </div>
 
-    <ChevronRight size={16} color="var(--text-tertiary)" />
+    {/* Remove */}
+    <button
+      onClick={(e) => onRemove(c.id, e)}
+      className="btn-icon"
+      style={{ width: 28, height: 28, background: 'rgba(239,68,68,0.07)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.15)', flexShrink: 0 }}
+      title="Remove candidate"
+    >
+      <Trash2 size={12} />
+    </button>
+
+    <ChevronRight size={16} color="var(--text-muted)" />
   </div>
 );
 
@@ -179,7 +188,7 @@ const CandidateModal = ({ candidate: c, onClose, onDeepDive }) => (
       <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <div style={{
           width: '56px', height: '56px',
-          borderRadius: 'var(--radius-md)',
+          borderRadius: 'var(--r-md)',
           background: c.gradient,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '1.1rem', fontWeight: '800', color: '#fff',
@@ -211,7 +220,7 @@ const CandidateModal = ({ candidate: c, onClose, onDeepDive }) => (
               {c.projects.map(p => (
                 <div key={p} style={{
                   padding: '0.625rem 0.875rem',
-                  borderRadius: 'var(--radius-md)',
+                  borderRadius: 'var(--r-md)',
                   background: 'var(--bg-elevated)',
                   border: '1px solid var(--border)',
                   fontSize: '0.85rem',
@@ -253,7 +262,7 @@ const CandidateModal = ({ candidate: c, onClose, onDeepDive }) => (
 );
 
 const SectionTitle = ({ icon, label }) => (
-  <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+  <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
     {icon}{label}
   </p>
 );

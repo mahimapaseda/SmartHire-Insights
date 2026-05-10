@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard, FileUp, Users, Share2,
-  Bell, Settings, HelpCircle, LogOut,
-  Menu, X, Search, Mail,
+  Bell, Settings as SettingsIcon, HelpCircle, LogOut,
+  Menu, X, Search, Mail, Camera, Mic, BarChart2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,6 +14,10 @@ import CandidateDeepDive    from '../components/CandidateDeepDive';
 import Notifications        from '../components/Notifications';
 import ThemeToggle          from '../components/ThemeToggle';
 import NotificationDropdown from '../components/NotificationDropdown';
+import FaceRecognition      from '../components/FaceRecognition';
+import VoiceAnalysis        from '../components/VoiceAnalysis';
+import ResultAnalysis       from '../components/ResultAnalysis';
+import Settings             from '../components/Settings';
 
 /* SVG logo mark */
 const Logo = () => (
@@ -33,17 +37,27 @@ const MENU_NAV = [
   { id: 'notifications', label: 'Notifications',icon: Bell, badge: 1 },
 ];
 
+const INTERVIEW_NAV = [
+  { id: 'face',    label: 'Face Recognition', icon: Camera },
+  { id: 'voice',   label: 'Voice Analysis',   icon: Mic },
+  { id: 'results', label: 'Result Analysis',  icon: BarChart2 },
+];
+
 const GENERAL_NAV = [
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'settings', label: 'Settings', icon: SettingsIcon },
   { id: 'help',     label: 'Help',     icon: HelpCircle },
 ];
 
 const PAGE_TITLES = {
-  dashboard:     { title: 'Dashboard',     sub: 'AI-powered recruitment intelligence.' },
-  upload:        { title: 'CV Ingestion',  sub: 'Upload and parse candidate resumes.' },
-  candidates:    { title: 'Candidates',    sub: 'AI-ranked candidate intelligence pool.' },
-  search:        { title: 'Graph Search',  sub: 'Explore the knowledge graph.' },
-  notifications: { title: 'Notifications', sub: 'Real-time activity feed.' },
+  dashboard:     { title: 'Dashboard',          sub: 'AI-powered recruitment intelligence.' },
+  upload:        { title: 'CV Ingestion',        sub: 'Upload and parse candidate resumes.' },
+  candidates:    { title: 'Candidates',          sub: 'AI-ranked candidate intelligence pool.' },
+  search:        { title: 'Graph Search',        sub: 'Explore the knowledge graph.' },
+  notifications: { title: 'Notifications',       sub: 'Real-time activity feed.' },
+  face:          { title: 'Face Recognition',    sub: 'Emotion detection from interview footage.' },
+  voice:         { title: 'Voice Analysis',      sub: 'Vocal stress and confidence detection.' },
+  results:       { title: 'Result Analysis',     sub: 'Combined interview and CV scoring.' },
+  settings:      { title: 'Settings',            sub: 'Configure your workspace and integrations.' },
 };
 
 const Dashboard = () => {
@@ -78,6 +92,10 @@ const Dashboard = () => {
       case 'candidates':    return <Candidates onSelectCandidate={setSelectedCandidate} />;
       case 'search':        return <MacroKnowledgeGraph />;
       case 'notifications': return <Notifications />;
+      case 'face':          return <FaceRecognition candidate={selectedCandidate} />;
+      case 'voice':         return <VoiceAnalysis candidate={selectedCandidate} />;
+      case 'results':       return <ResultAnalysis />;
+      case 'settings':      return <Settings />;
       default:              return <Overview onIngest={() => goTo('upload')} />;
     }
   };
@@ -155,13 +173,29 @@ const Dashboard = () => {
           ))}
         </nav>
 
+        {/* INTERVIEW ANALYSIS section */}
+        <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', paddingLeft: '0.75rem', marginBottom: '0.5rem', marginTop: '0.25rem' }}>
+          Interview Analysis
+        </p>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1.75rem' }}>
+          {INTERVIEW_NAV.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              className={`nav-item ${activeTab === id && !selectedCandidate ? 'active' : ''}`}
+              onClick={() => goTo(id)}
+            >
+              <Icon size={17} strokeWidth={1.8} />
+              <span style={{ flex: 1 }}>{label}</span>
+            </button>
+          ))}
+        </nav>
+
         {/* GENERAL section */}
         <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', paddingLeft: '0.75rem', marginBottom: '0.5rem' }}>
           General
-        </p>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        </p>        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {GENERAL_NAV.map(({ id, label, icon: Icon }) => (
-            <button key={id} className="nav-item" onClick={() => {}}>
+            <button key={id} className={`nav-item ${activeTab === id ? 'active' : ''}`} onClick={() => goTo(id)}>
               <Icon size={17} strokeWidth={1.8} />
               <span>{label}</span>
             </button>
