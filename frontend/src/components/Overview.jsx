@@ -135,7 +135,7 @@ const Overview = ({ onIngest }) => {
 
 /* ── Stat Card ── */
 const StatCard = ({ label, value, delta, icon: Icon, featured }) => (
-  <div style={{
+  <div className="card-lift" style={{
     padding: '1.25rem',
     borderRadius: 'var(--r-xl)',
     background: featured ? 'linear-gradient(145deg, #1a5c38 0%, #0d3320 100%)' : 'var(--bg-surface)',
@@ -145,6 +145,7 @@ const StatCard = ({ label, value, delta, icon: Icon, featured }) => (
     position: 'relative',
     overflow: 'hidden',
     transition: 'var(--transition)',
+    cursor: 'default',
   }}>
     {/* Arrow link */}
     <div style={{
@@ -160,7 +161,7 @@ const StatCard = ({ label, value, delta, icon: Icon, featured }) => (
     <p style={{ fontSize: '0.8rem', fontWeight: '500', color: featured ? 'rgba(255,255,255,0.75)' : 'var(--text-secondary)', marginBottom: '0.75rem' }}>
       {label}
     </p>
-    <p style={{ fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '0.5rem' }}>
+    <p className="animate-count" style={{ fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '0.5rem' }}>
       {value}
     </p>
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

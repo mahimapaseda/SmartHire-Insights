@@ -405,30 +405,191 @@ button {
 .divider { height: 1px; background: var(--border); }
 
 /* ═══════════════════════════════════════════════════════════════
-   ANIMATIONS
+   ANIMATIONS — comprehensive
 ═══════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+@keyframes fadeLeft {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeRight {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInModal {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes progressFill {
+  from { width: 0%; }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+@keyframes slideInSidebar {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes badgePop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes borderPulse {
+  0%, 100% { border-color: var(--border); }
+  50%       { border-color: var(--primary); }
+}
 
-.animate-fade-up { animation: fadeUp 0.35s var(--ease) forwards; }
-.animate-fade    { animation: fadeIn 0.25s var(--ease) forwards; }
-.animate-spin    { animation: spin 0.9s linear infinite; }
+/* ── Utility classes ── */
+.animate-fade-up    { animation: fadeUp    0.38s var(--ease) both; }
+.animate-fade-down  { animation: fadeDown  0.3s  var(--ease) both; }
+.animate-fade       { animation: fadeIn    0.25s var(--ease) both; }
+.animate-fade-left  { animation: fadeLeft  0.35s var(--ease) both; }
+.animate-fade-right { animation: fadeRight 0.35s var(--ease) both; }
+.animate-scale-in   { animation: scaleIn   0.3s  var(--ease) both; }
+.animate-modal      { animation: slideInModal 0.3s var(--ease) both; }
+.animate-spin       { animation: spin 0.9s linear infinite; }
+.animate-float      { animation: float 3s ease-in-out infinite; }
+.animate-count      { animation: countUp 0.5s var(--ease) both; }
 
-/* Stagger */
-.stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 55ms; }
-.stagger > *:nth-child(3) { animation-delay: 110ms; }
-.stagger > *:nth-child(4) { animation-delay: 165ms; }
+/* Progress bars animate on mount */
+.progress-fill { animation: progressFill 0.8s var(--ease) both; }
+
+/* ── Stagger delays ── */
+.stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger > *:nth-child(2)  { animation-delay: 60ms; }
+.stagger > *:nth-child(3)  { animation-delay: 120ms; }
+.stagger > *:nth-child(4)  { animation-delay: 180ms; }
+.stagger > *:nth-child(5)  { animation-delay: 240ms; }
+.stagger > *:nth-child(6)  { animation-delay: 300ms; }
+
+/* Sidebar nav items stagger */
+.nav-stagger > *:nth-child(1)  { animation: slideInSidebar 0.3s var(--ease) 50ms  both; }
+.nav-stagger > *:nth-child(2)  { animation: slideInSidebar 0.3s var(--ease) 100ms both; }
+.nav-stagger > *:nth-child(3)  { animation: slideInSidebar 0.3s var(--ease) 150ms both; }
+.nav-stagger > *:nth-child(4)  { animation: slideInSidebar 0.3s var(--ease) 200ms both; }
+.nav-stagger > *:nth-child(5)  { animation: slideInSidebar 0.3s var(--ease) 250ms both; }
+.nav-stagger > *:nth-child(6)  { animation: slideInSidebar 0.3s var(--ease) 300ms both; }
+.nav-stagger > *:nth-child(7)  { animation: slideInSidebar 0.3s var(--ease) 350ms both; }
+.nav-stagger > *:nth-child(8)  { animation: slideInSidebar 0.3s var(--ease) 400ms both; }
+
+/* ── Skeleton loader ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-overlay) 50%, var(--bg-elevated) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm);
+}
+
+/* ── Card hover lift ── */
+.card-lift {
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Interactive card (clickable) ── */
+.card-interactive {
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+.card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Pulse ring (for status dots, live indicators) ── */
+.pulse-ring {
+  position: relative;
+}
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--success);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* ── Badge pop ── */
+.badge-pop { animation: badgePop 0.4s var(--ease) both; }
+
+/* ── Page transition wrapper ── */
+.page-enter {
+  animation: fadeUp 0.32s var(--ease) both;
+}
+
+/* ── Notification slide in ── */
+.notif-enter {
+  animation: fadeLeft 0.28s var(--ease) both;
+}
+
+/* ── Tooltip ── */
+.tooltip-enter {
+  animation: scaleIn 0.18s var(--ease) both;
+}
+
+/* ── Button press ── */
+.btn-primary:active,
+.btn-outline:active,
+.btn-ghost:active {
+  transform: scale(0.97);
+}
+
+/* ── Input focus ring animation ── */
+.input:focus {
+  animation: borderPulse 0s; /* reset — handled by box-shadow */
+}
+
+/* ── Reduce motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE HELPERS

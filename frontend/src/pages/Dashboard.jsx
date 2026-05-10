@@ -18,6 +18,7 @@ import FaceRecognition      from '../components/FaceRecognition';
 import VoiceAnalysis        from '../components/VoiceAnalysis';
 import ResultAnalysis       from '../components/ResultAnalysis';
 import Settings             from '../components/Settings';
+import Help                 from '../components/Help';
 
 /* SVG logo mark */
 const Logo = () => (
@@ -58,6 +59,7 @@ const PAGE_TITLES = {
   voice:         { title: 'Voice Analysis',      sub: 'Vocal stress and confidence detection.' },
   results:       { title: 'Result Analysis',     sub: 'Combined interview and CV scoring.' },
   settings:      { title: 'Settings',            sub: 'Configure your workspace and integrations.' },
+  help:          { title: 'Help',                sub: 'Documentation, guides, and support.' },
 };
 
 const Dashboard = () => {
@@ -96,6 +98,7 @@ const Dashboard = () => {
       case 'voice':         return <VoiceAnalysis candidate={selectedCandidate} />;
       case 'results':       return <ResultAnalysis />;
       case 'settings':      return <Settings />;
+      case 'help':          return <Help />;
       default:              return <Overview onIngest={() => goTo('upload')} />;
     }
   };
@@ -151,7 +154,7 @@ const Dashboard = () => {
         <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', paddingLeft: '0.75rem', marginBottom: '0.5rem' }}>
           Menu
         </p>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1.75rem' }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1.75rem' }} className="nav-stagger">
           {MENU_NAV.map(({ id, label, icon: Icon, badge }) => (
             <button
               key={id}
@@ -177,7 +180,7 @@ const Dashboard = () => {
         <p style={{ fontSize: '0.62rem', fontWeight: '700', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', paddingLeft: '0.75rem', marginBottom: '0.5rem', marginTop: '0.25rem' }}>
           Interview Analysis
         </p>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1.75rem' }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1.75rem' }} className="nav-stagger">
           {INTERVIEW_NAV.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -324,7 +327,7 @@ const Dashboard = () => {
         {/* Page content */}
         <main style={{ flex: 1, padding: '2rem 1.75rem', overflowY: 'auto' }}>
           {/* Page heading — matches image layout */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="animate-fade-down" key={`heading-${activeTab}-${selectedCandidate?.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h1 style={{ fontSize: '1.75rem', marginBottom: '0.3rem' }}>{meta.title}</h1>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{meta.sub}</p>
@@ -341,7 +344,9 @@ const Dashboard = () => {
             )}
           </div>
 
-          {renderContent()}
+          <div key={`content-${activeTab}-${selectedCandidate?.id}`} className="page-enter">
+            {renderContent()}
+          </div>
         </main>
       </div>
 

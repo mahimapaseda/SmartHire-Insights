@@ -121,7 +121,9 @@ const Login = () => {
 
         {/* Top: logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative' }}>
-          <LogoMark size={38} dark />
+          <div className="animate-float">
+            <LogoMark size={38} dark />
+          </div>
           <div>
             <p style={{ fontWeight: '800', fontSize: '1.1rem', color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>SmartHire</p>
             <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: '500', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Insights Platform</p>
@@ -149,7 +151,7 @@ const Login = () => {
           </div>
 
           {/* Feature pills */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }} className="stagger">
             <FeaturePill icon={Brain}       label="AI-powered CV parsing & scoring" />
             <FeaturePill icon={Share2}      label="Neo4j knowledge graph extraction" />
             <FeaturePill icon={Users}       label="Candidate intelligence pool" />
@@ -157,7 +159,7 @@ const Login = () => {
           </div>
 
           {/* Stats row */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }} className="stagger">
             <StatBubble value="128+"  label="CVs Parsed" />
             <StatBubble value="94%"   label="Match Rate" />
             <StatBubble value="2.4k"  label="Graph Nodes" />

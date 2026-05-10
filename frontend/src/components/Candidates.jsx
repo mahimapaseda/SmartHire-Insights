@@ -111,9 +111,9 @@ const Candidates = ({ onSelectCandidate }) => {
 
 const CandidateRow = ({ candidate: c, onClick, onRemove }) => (
   <div
-    className="card"
+    className="card card-interactive"
     onClick={onClick}
-    style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', flexWrap: 'wrap' }}
+    style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}
   >
     {/* Avatar */}
     <div style={{

@@ -304,7 +304,7 @@ const FileCard = ({ fileObj, onRemove, expanded, onToggle }) => {
 
 /* ── Extracted profile card (grid below queue) ────────────────── */
 const ProfileCard = ({ profile: p }) => (
-  <div className="card" style={{ padding: '1.25rem' }}>
+  <div className="card card-lift animate-scale-in" style={{ padding: '1.25rem' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
       <div style={{
         width: '40px', height: '40px', borderRadius: 'var(--r-md)',

@@ -75,26 +75,27 @@ const Notifications = () => {
       {/* Items */}
       {items.length === 0 ? (
         <div className="card" style={{ padding: '4rem', textAlign: 'center' }}>
-          <Bell size={32} color="var(--text-tertiary)" style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>No notifications</p>
+          <Bell size={32} color="var(--text-muted)" style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No notifications</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {items.map(n => {
+          {items.map((n, i) => {
             const Icon = n.icon;
             return (
               <div
                 key={n.id}
-                className="card"
+                className="card notif-enter"
                 style={{
                   padding: '1rem 1.25rem',
                   display: 'flex', gap: '1rem', alignItems: 'flex-start',
                   borderLeft: n.unread ? '3px solid var(--primary)' : '3px solid transparent',
+                  animationDelay: `${i * 50}ms`,
                 }}
               >
                 <div style={{
                   width: '38px', height: '38px',
-                  borderRadius: 'var(--radius-md)',
+                  borderRadius: 'var(--r-md)',
                   background: n.iconBg,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
@@ -104,7 +105,7 @@ const Notifications = () => {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                     <p style={{ fontSize: '0.875rem', fontWeight: n.unread ? '700' : '600' }}>{n.title}</p>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', flexShrink: 0 }}>{n.time}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{n.time}</span>
                   </div>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem', lineHeight: '1.5' }}>{n.desc}</p>
                 </div>

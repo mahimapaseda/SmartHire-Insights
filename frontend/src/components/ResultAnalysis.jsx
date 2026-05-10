@@ -224,7 +224,7 @@ const ResultAnalysis = () => {
 
 /* ── Summary card ─────────────────────────────────────────────── */
 const SummaryCard = ({ icon: Icon, label, value, color }) => (
-  <div className="card" style={{ padding: '1rem 1.25rem' }}>
+  <div className="card card-lift" style={{ padding: '1rem 1.25rem' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.625rem' }}>
       <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '500' }}>{label}</p>
       <div style={{ width: '28px', height: '28px', borderRadius: 'var(--r-sm)', background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -237,7 +237,7 @@ const SummaryCard = ({ icon: Icon, label, value, color }) => (
 
 /* ── Result card ──────────────────────────────────────────────── */
 const ResultCard = ({ result: r, rank, expanded, onToggle }) => (
-  <div className="card" style={{ overflow: 'hidden' }}>
+  <div className="card card-interactive" style={{ overflow: 'hidden' }}>
     <div onClick={onToggle} style={{
       padding: '1.1rem 1.5rem',
       display: 'flex', alignItems: 'center', gap: '1rem',
