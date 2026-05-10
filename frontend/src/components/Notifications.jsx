@@ -1,61 +1,125 @@
-import React from 'react';
-import { Bell, User, MessageCircle, FileText, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, CheckCircle2, MessageCircle, Bell, Trash2 } from 'lucide-react';
+
+const ALL_NOTIFS = [
+  {
+    id: 1,
+    type: 'parse',
+    title: 'CV Parsing Complete',
+    desc: "Sarah Chen's profile is now available in the intelligence pool.",
+    time: '2 min ago',
+    icon: FileText,
+    iconColor: 'var(--primary)',
+    iconBg: 'var(--primary-subtle)',
+    unread: true,
+  },
+  {
+    id: 2,
+    type: 'match',
+    title: 'High Potential Match',
+    desc: 'James Wilson has a 92% match score for the DevOps Lead position.',
+    time: '1 hr ago',
+    icon: CheckCircle2,
+    iconColor: 'var(--success)',
+    iconBg: 'rgba(16,185,129,0.1)',
+    unread: false,
+  },
+  {
+    id: 3,
+    type: 'message',
+    title: 'New Message',
+    desc: 'Anuruddha sent you a message regarding the Neo4j schema update.',
+    time: '3 hr ago',
+    icon: MessageCircle,
+    iconColor: 'var(--info)',
+    iconBg: 'rgba(59,130,246,0.1)',
+    unread: false,
+  },
+  {
+    id: 4,
+    type: 'parse',
+    title: 'Batch Processing Done',
+    desc: '5 new CVs have been parsed and added to the candidate pool.',
+    time: 'Yesterday',
+    icon: FileText,
+    iconColor: 'var(--primary)',
+    iconBg: 'var(--primary-subtle)',
+    unread: false,
+  },
+];
 
 const Notifications = () => {
-  const alerts = [
-    { id: 1, type: 'parse', title: 'CV Parsing Complete', desc: 'Sarah Chen\'s profile is now available in the intelligence pool.', time: '2 mins ago', icon: <FileText size={18} color="var(--primary)" /> },
-    { id: 2, type: 'match', title: 'High Potential Match', desc: 'New candidate James Wilson has a 92% match score for DevOps Lead.', time: '1 hour ago', icon: <CheckCircle size={18} color="#22c55e" /> },
-    { id: 3, type: 'message', title: 'New Message', desc: 'Anuruddha sent you a message regarding the Neo4j schema update.', time: '3 hours ago', icon: <MessageCircle size={18} color="#8b5cf6" /> },
-  ];
+  const [items, setItems] = useState(ALL_NOTIFS);
+
+  const clearAll = () => setItems([]);
+  const dismiss  = (id) => setItems(prev => prev.filter(n => n.id !== id));
 
   return (
-    <div className="notifications-portal animate-fade" style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Recruiter Activity Feed</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Real-time updates from AI parsing and backend services.</p>
+    <div className="animate-fade-up" style={{ maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Activity Feed</h2>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Real-time updates from AI parsing and backend services.
+          </p>
+        </div>
+        {items.length > 0 && (
+          <button className="btn-ghost" onClick={clearAll} style={{ fontSize: '0.8rem' }}>
+            <Trash2 size={13} /> Clear all
+          </button>
+        )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {alerts.map(a => (
-          <div key={a.id} className="glass glass-hover" style={{
-            padding: '1.25rem',
-            borderRadius: '18px',
-            display: 'flex',
-            gap: '1.25rem',
-            alignItems: 'flex-start'
-          }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              borderRadius: '12px', 
-              background: 'rgba(255,255,255,0.05)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center' 
-            }}>
-              {a.icon}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                <h4 style={{ fontSize: '0.95rem' }}>{a.title}</h4>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.time}</span>
+      {/* Items */}
+      {items.length === 0 ? (
+        <div className="card" style={{ padding: '4rem', textAlign: 'center' }}>
+          <Bell size={32} color="var(--text-tertiary)" style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>No notifications</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {items.map(n => {
+            const Icon = n.icon;
+            return (
+              <div
+                key={n.id}
+                className="card"
+                style={{
+                  padding: '1rem 1.25rem',
+                  display: 'flex', gap: '1rem', alignItems: 'flex-start',
+                  borderLeft: n.unread ? '3px solid var(--primary)' : '3px solid transparent',
+                }}
+              >
+                <div style={{
+                  width: '38px', height: '38px',
+                  borderRadius: 'var(--radius-md)',
+                  background: n.iconBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon size={17} color={n.iconColor} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <p style={{ fontSize: '0.875rem', fontWeight: n.unread ? '700' : '600' }}>{n.title}</p>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', flexShrink: 0 }}>{n.time}</span>
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem', lineHeight: '1.5' }}>{n.desc}</p>
+                </div>
+                <button
+                  className="btn-icon"
+                  style={{ width: 26, height: 26, flexShrink: 0 }}
+                  onClick={() => dismiss(n.id)}
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>{a.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <button className="glass glass-hover" style={{ 
-        width: '100%', 
-        marginTop: '2rem', 
-        padding: '1rem', 
-        borderRadius: '16px', 
-        color: 'var(--text-muted)',
-        fontSize: '0.9rem'
-      }}>
-        Clear All Notifications
-      </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
