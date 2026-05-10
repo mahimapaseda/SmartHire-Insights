@@ -270,7 +270,7 @@ const VoiceAnalysis = ({ candidate }) => {
                       <span style={{ fontSize: '0.75rem', fontWeight: '700', color: score >= 75 ? 'var(--success)' : score >= 55 ? 'var(--warning)' : 'var(--danger)' }}>{score}%</span>
                     </div>
                     <div className="progress-track">
-                      <div className="progress-fill" style={{
+                      <div className="progress-fill-enter" style={{
                         width: `${score}%`,
                         background: score >= 75 ? 'var(--success)' : score >= 55 ? 'var(--warning)' : 'var(--danger)',
                       }} />

@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   Upload, FileText, X, CheckCircle2, AlertCircle,
   Loader2, ChevronDown, ChevronUp, User, Briefcase,
-  MapPin, GraduationCap, Code2, Layers,
+  MapPin, GraduationCap,
 } from 'lucide-react';
 import { candidateStore, extractFromFile } from '../utils/candidateStore';
 

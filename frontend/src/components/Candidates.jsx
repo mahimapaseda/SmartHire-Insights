@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search, MapPin, GraduationCap, Mail, Briefcase,
   Clock, ChevronRight, X, Star, Share2, MessageSquare,
-  Filter, SlidersHorizontal, Trash2,
+  Trash2,
 } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
 

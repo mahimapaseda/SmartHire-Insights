@@ -396,7 +396,14 @@ button {
 .progress-fill {
   height: 100%;
   border-radius: 99px;
+  /* transition only — animation would reset to 0 on every state update during live parsing */
   transition: width 0.35s var(--ease);
+}
+/* Separate class for static bars that should animate in from 0 on first mount */
+.progress-fill-enter {
+  height: 100%;
+  border-radius: 99px;
+  animation: progressFill 0.8s var(--ease) both;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -485,9 +492,6 @@ button {
 .animate-spin       { animation: spin 0.9s linear infinite; }
 .animate-float      { animation: float 3s ease-in-out infinite; }
 .animate-count      { animation: countUp 0.5s var(--ease) both; }
-
-/* Progress bars animate on mount */
-.progress-fill { animation: progressFill 0.8s var(--ease) both; }
 
 /* ── Stagger delays ── */
 .stagger > *:nth-child(1)  { animation-delay: 0ms; }

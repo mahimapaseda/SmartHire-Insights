@@ -5,7 +5,6 @@ import {
   Menu, X, Search, Mail, Camera, Mic, BarChart2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 import Overview             from '../components/Overview';
 import CVIngestion          from '../components/CVIngestion';
 import Candidates           from '../components/Candidates';
@@ -69,6 +68,12 @@ const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen]             = useState(false);
   const [notifOpen, setNotifOpen]                 = useState(false);
   const notifRef = useRef(null);
+
+  // Route guard — redirect to login if not authenticated
+  useEffect(() => {
+    const isAuth = sessionStorage.getItem('sh_auth');
+    if (!isAuth) navigate('/login', { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -203,7 +208,7 @@ const Dashboard = () => {
               <span>{label}</span>
             </button>
           ))}
-          <button className="nav-item" onClick={() => navigate('/login')}>
+          <button className="nav-item" onClick={() => { sessionStorage.removeItem('sh_auth'); navigate('/login'); }}>
             <LogOut size={17} strokeWidth={1.8} />
             <span>Logout</span>
           </button>
@@ -212,7 +217,7 @@ const Dashboard = () => {
         {/* Bottom promo card — dark green, matches image */}
         <div style={{
           marginTop: 'auto',
-          marginTop: '2rem',
+          paddingTop: '2rem',
           borderRadius: 'var(--r-xl)',
           background: 'linear-gradient(145deg, #1a5c38 0%, #0d3320 100%)',
           padding: '1.25rem',

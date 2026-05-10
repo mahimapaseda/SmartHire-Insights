@@ -74,6 +74,7 @@ const Login = () => {
     setLoading(true);
     setTimeout(() => {
       if (email === DEMO_EMAIL && password === DEMO_KEY) {
+        sessionStorage.setItem('sh_auth', '1');
         navigate('/dashboard');
       } else {
         setError('Invalid credentials. Use the demo account below.');

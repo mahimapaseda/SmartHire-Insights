@@ -317,7 +317,7 @@ const FaceRecognition = ({ candidate }) => {
                           <span style={{ fontSize: '0.75rem', fontWeight: '700', color: meta.color }}>{score}%</span>
                         </div>
                         <div className="progress-track">
-                          <div className="progress-fill" style={{ width: `${score}%`, background: meta.color }} />
+                          <div className="progress-fill-enter" style={{ width: `${score}%`, background: meta.color }} />
                         </div>
                       </div>
                     );

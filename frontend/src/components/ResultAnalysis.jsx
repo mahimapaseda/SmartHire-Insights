@@ -313,7 +313,7 @@ const ResultCard = ({ result: r, rank, expanded, onToggle }) => (
                   <span style={{ fontSize: '0.75rem', fontWeight: '700', color: s.color }}>{s.score}%</span>
                 </div>
                 <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${s.score}%`, background: s.color }} />
+                  <div className="progress-fill-enter" style={{ width: `${s.score}%`, background: s.color }} />
                 </div>
               </div>
             ))}
