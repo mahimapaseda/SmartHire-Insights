@@ -9,7 +9,7 @@ $BackendDir  = Join-Path $RootDir "backend"
 Write-Host "--- Initializing SmartHire-Insights ---" -ForegroundColor Cyan
 Write-Host "Root: $RootDir" -ForegroundColor DarkGray
 
-# ── 1. Frontend ──────────────────────────────────────────────────
+# == 1. Frontend ==================================================
 if (Test-Path $FrontendDir) {
     Write-Host "`n[1/2] Starting Frontend (React)..." -ForegroundColor Yellow
 
@@ -26,8 +26,8 @@ if (Test-Path $FrontendDir) {
     Write-Warning "Frontend directory not found at: $FrontendDir"
 }
 
-# ── 2. Backend ───────────────────────────────────────────────────
-if (Test-Path $BackendDir) {
+# == 2. Backend ===================================================
+if ((Test-Path $BackendDir) -and (Get-ChildItem $BackendDir)) {
     Write-Host "`n[2/2] Starting Backend (Python)..." -ForegroundColor Yellow
 
     $VenvActivate = Join-Path $BackendDir "venv\Scripts\Activate.ps1"
@@ -44,7 +44,7 @@ if (Test-Path $BackendDir) {
 
     Write-Host "  Backend starting at http://localhost:5000" -ForegroundColor Cyan
 } else {
-    Write-Host "`n[2/2] Backend not found — skipping." -ForegroundColor Gray
+    Write-Host "`n[2/2] Backend not found or empty - skipping." -ForegroundColor Gray
     Write-Host "  Place Python code in: $BackendDir" -ForegroundColor DarkGray
 }
 
