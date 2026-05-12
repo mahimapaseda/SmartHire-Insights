@@ -46,24 +46,66 @@ const CVIngestion = () => {
     queued.forEach((fileObj) => {
       let progress = 0;
       const tick = setInterval(() => {
-        progress = Math.min(100, progress + Math.random() * 20 + 8);
+        progress = Math.min(95, progress + Math.random() * 15 + 5);
         const pct = Math.floor(progress);
+        setFiles(prev => prev.map(f =>
+          f.id === fileObj.id ? { ...f, status: 'parsing', progress: pct } : f
+        ));
+      }, 400);
 
-        if (pct >= 100) {
-          clearInterval(tick);
-          const profile = extractFromFile(fileObj.file);
+      const formData = new FormData();
+      formData.append('file', fileObj.file);
+
+      fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      .then(res => res.json())
+      .then(data => {
+        clearInterval(tick);
+        if (data.success) {
+          const d = data.data;
+          const initials = d.name && d.name !== "Not Found" ? d.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'CV';
+          
+          const profile = {
+            id: fileObj.id,
+            name: d.name,
+            initials: initials || 'CV',
+            role: 'Software Engineer', // Defaulted or extracted if possible
+            match: Math.floor(Math.random() * 25) + 72,
+            skills: d.skills || [],
+            experience: d.experience && d.experience.length > 0 ? `${d.experience[0].title} at ${d.experience[0].company}` : 'Not detected',
+            location: 'Location not specified',
+            education: d.education && d.education.length > 0 ? d.education[0].degree : 'Not detected',
+            email: d.email,
+            summary: d.summary,
+            projects: [],
+            gradient: 'linear-gradient(135deg,#1a5c38,#22c55e)',
+            source: d.source,
+            addedAt: new Date().toLocaleTimeString(),
+          };
+          
           setFiles(prev => prev.map(f =>
             f.id === fileObj.id ? { ...f, status: 'completed', progress: 100, profile } : f
           ));
           candidateStore.add(profile);
-          done++;
-          if (done === queued.length) setParsing(false);
         } else {
           setFiles(prev => prev.map(f =>
-            f.id === fileObj.id ? { ...f, status: 'parsing', progress: pct } : f
+            f.id === fileObj.id ? { ...f, status: 'error', progress: 0 } : f
           ));
         }
-      }, 350);
+      })
+      .catch(err => {
+        clearInterval(tick);
+        console.error("Upload error:", err);
+        setFiles(prev => prev.map(f =>
+          f.id === fileObj.id ? { ...f, status: 'error', progress: 0 } : f
+        ));
+      })
+      .finally(() => {
+        done++;
+        if (done === queued.length) setParsing(false);
+      });
     });
   };
 
