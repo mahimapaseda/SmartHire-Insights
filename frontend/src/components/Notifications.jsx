@@ -1,58 +1,28 @@
-import React, { useState } from 'react';
-import { FileText, CheckCircle2, MessageCircle, Bell, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, CheckCircle2, MessageCircle, AlertCircle, Bell, Trash2 } from 'lucide-react';
+import { notificationStore } from '../utils/notificationStore';
 
-const ALL_NOTIFS = [
-  {
-    id: 1,
-    type: 'parse',
-    title: 'CV Parsing Complete',
-    desc: "Sarah Chen's profile is now available in the intelligence pool.",
-    time: '2 min ago',
-    icon: FileText,
-    iconColor: 'var(--primary)',
-    iconBg: 'var(--primary-subtle)',
-    unread: true,
-  },
-  {
-    id: 2,
-    type: 'match',
-    title: 'High Potential Match',
-    desc: 'James Wilson has a 92% match score for the DevOps Lead position.',
-    time: '1 hr ago',
-    icon: CheckCircle2,
-    iconColor: 'var(--success)',
-    iconBg: 'rgba(16,185,129,0.1)',
-    unread: false,
-  },
-  {
-    id: 3,
-    type: 'message',
-    title: 'New Message',
-    desc: 'Anuruddha sent you a message regarding the Neo4j schema update.',
-    time: '3 hr ago',
-    icon: MessageCircle,
-    iconColor: 'var(--info)',
-    iconBg: 'rgba(59,130,246,0.1)',
-    unread: false,
-  },
-  {
-    id: 4,
-    type: 'parse',
-    title: 'Batch Processing Done',
-    desc: '5 new CVs have been parsed and added to the candidate pool.',
-    time: 'Yesterday',
-    icon: FileText,
-    iconColor: 'var(--primary)',
-    iconBg: 'var(--primary-subtle)',
-    unread: false,
-  },
-];
+const getIconConfig = (type) => {
+  switch (type) {
+    case 'parse': return { icon: FileText, color: 'var(--primary)', bg: 'var(--primary-subtle)' };
+    case 'match': return { icon: CheckCircle2, color: 'var(--success)', bg: 'rgba(16,185,129,0.1)' };
+    case 'message': return { icon: MessageCircle, color: 'var(--info)', bg: 'rgba(59,130,246,0.1)' };
+    case 'error': return { icon: AlertCircle, color: 'var(--danger)', bg: 'rgba(239,68,68,0.1)' };
+    default: return { icon: MessageCircle, color: 'var(--text-muted)', bg: 'var(--bg-elevated)' };
+  }
+};
 
 const Notifications = () => {
-  const [items, setItems] = useState(ALL_NOTIFS);
+  const [items, setItems] = useState(notificationStore.getAll());
 
-  const clearAll = () => setItems([]);
-  const dismiss  = (id) => setItems(prev => prev.filter(n => n.id !== id));
+  useEffect(() => {
+    return notificationStore.subscribe(() => {
+      setItems(notificationStore.getAll());
+    });
+  }, []);
+
+  const clearAll = () => notificationStore.clearAll();
+  const dismiss  = (id) => notificationStore.dismiss(id);
 
   return (
     <div className="animate-fade-up" style={{ maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -81,7 +51,8 @@ const Notifications = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {items.map((n, i) => {
-            const Icon = n.icon;
+            const conf = getIconConfig(n.type);
+            const Icon = conf.icon;
             return (
               <div
                 key={n.id}
@@ -96,11 +67,11 @@ const Notifications = () => {
                 <div style={{
                   width: '38px', height: '38px',
                   borderRadius: 'var(--r-md)',
-                  background: n.iconBg,
+                  background: conf.bg,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
-                  <Icon size={17} color={n.iconColor} />
+                  <Icon size={17} color={conf.color} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>

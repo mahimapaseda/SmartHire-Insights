@@ -22,6 +22,7 @@ import Help                 from '../components/Help';
 
 import RequirementsImport from '../components/RequirementsImport';
 import { candidateStore } from '../utils/candidateStore';
+import { notificationStore } from '../utils/notificationStore';
 
 /* SVG logo mark */
 const Logo = () => (
@@ -38,7 +39,7 @@ const MENU_NAV = [
   { id: 'upload',        label: 'CV Ingestion', icon: FileUp },
   { id: 'requirements',  label: 'Requirements', icon: ClipboardList },
   { id: 'candidates',    label: 'Candidates',   icon: Users },
-  { id: 'notifications', label: 'Notifications',icon: Bell, badge: 1 },
+  { id: 'notifications', label: 'Notifications',icon: Bell },
 ];
 
 const INTERVIEW_NAV = [
@@ -72,7 +73,14 @@ const Dashboard = () => {
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [sidebarOpen, setSidebarOpen]             = useState(false);
   const [notifOpen, setNotifOpen]                 = useState(false);
+  const [unreadCount, setUnreadCount]             = useState(notificationStore.getUnreadCount());
   const notifRef = useRef(null);
+
+  useEffect(() => {
+    return notificationStore.subscribe(() => {
+      setUnreadCount(notificationStore.getUnreadCount());
+    });
+  }, []);
 
   // Route guard — redirect to login if not authenticated
   useEffect(() => {
@@ -95,6 +103,9 @@ const Dashboard = () => {
     setActiveTab(tab);
     setSidebarOpen(false);
     setSelectedCandidate(null);
+    if (tab === 'notifications') {
+      notificationStore.markAllRead();
+    }
   };
 
   const renderContent = () => {
@@ -170,7 +181,7 @@ const Dashboard = () => {
           Menu
         </p>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '1.75rem' }} className="nav-stagger">
-          {MENU_NAV.map(({ id, label, icon: Icon, badge }) => (
+          {MENU_NAV.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               className={`nav-item ${activeTab === id && !selectedCandidate ? 'active' : ''}`}
@@ -178,14 +189,14 @@ const Dashboard = () => {
             >
               <Icon size={17} strokeWidth={1.8} />
               <span style={{ flex: 1 }}>{label}</span>
-              {badge && (
+              {(id === 'notifications' && unreadCount > 0) && (
                 <span style={{
                   background: 'var(--danger)', color: '#fff',
                   fontSize: '0.6rem', fontWeight: '700',
                   minWidth: '18px', height: '18px', borderRadius: '99px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   padding: '0 4px',
-                }}>{badge}</span>
+                }}>{unreadCount}</span>
               )}
             </button>
           ))}

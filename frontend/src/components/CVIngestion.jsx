@@ -5,6 +5,7 @@ import {
   MapPin, GraduationCap,
 } from 'lucide-react';
 import { candidateStore, extractFromFile } from '../utils/candidateStore';
+import { notificationStore, NOTIF_TYPES } from '../utils/notificationStore';
 
 const ACCEPTED = [
   'application/pdf',
@@ -70,6 +71,7 @@ const CVIngestion = () => {
             setFiles(prev => prev.map(f =>
               f.id === fileObj.id ? { ...f, status: 'error', progress: 100, errorMsg: 'NLP failed to extract candidate name. Not saved.' } : f
             ));
+            notificationStore.add(NOTIF_TYPES.ERROR, 'Parsing Rejected', `Failed to extract name from ${fileObj.file.name}. Not saved to DB.`);
           } else {
             const initials = d.name && d.name !== "Not Found" ? d.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'CV';
             
@@ -95,19 +97,27 @@ const CVIngestion = () => {
               f.id === fileObj.id ? { ...f, status: 'completed', progress: 100, profile } : f
             ));
             candidateStore.add(profile);
+            
+            notificationStore.add(NOTIF_TYPES.PARSE, 'CV Parsing Complete', `${profile.name}'s profile is now available in the intelligence pool.`);
+            
+            if (profile.match >= 85) {
+              notificationStore.add(NOTIF_TYPES.MATCH, 'High Potential Match', `${profile.name} has an impressive ${profile.match}% match score.`);
+            }
           }
         } else {
           setFiles(prev => prev.map(f =>
             f.id === fileObj.id ? { ...f, status: 'error', progress: 0, errorMsg: data.error || 'Server error' } : f
           ));
+          notificationStore.add(NOTIF_TYPES.ERROR, 'Processing Error', `Server failed to process ${fileObj.file.name}.`);
         }
       })
       .catch(err => {
         clearInterval(tick);
         console.error("Upload error:", err);
         setFiles(prev => prev.map(f =>
-          f.id === fileObj.id ? { ...f, status: 'error', progress: 0 } : f
+          f.id === fileObj.id ? { ...f, status: 'error', progress: 0, errorMsg: 'Network error' } : f
         ));
+        notificationStore.add(NOTIF_TYPES.ERROR, 'Network Error', `Could not connect to the backend server.`);
       })
       .finally(() => {
         done++;
