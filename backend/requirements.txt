@@ -3,3 +3,4 @@ flask-cors
 spacy
 pymupdf
 neo4j
+python-docx

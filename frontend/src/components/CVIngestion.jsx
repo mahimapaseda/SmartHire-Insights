@@ -65,33 +65,40 @@ const CVIngestion = () => {
         clearInterval(tick);
         if (data.success) {
           const d = data.data;
-          const initials = d.name && d.name !== "Not Found" ? d.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'CV';
           
-          const profile = {
-            id: fileObj.id,
-            name: d.name,
-            initials: initials || 'CV',
-            role: 'Software Engineer', // Defaulted or extracted if possible
-            match: Math.floor(Math.random() * 25) + 72,
-            skills: d.skills || [],
-            experience: d.experience && d.experience.length > 0 ? `${d.experience[0].title} at ${d.experience[0].company}` : 'Not detected',
-            location: 'Location not specified',
-            education: d.education && d.education.length > 0 ? d.education[0].degree : 'Not detected',
-            email: d.email,
-            summary: d.summary,
-            projects: [],
-            gradient: 'linear-gradient(135deg,#1a5c38,#22c55e)',
-            source: d.source,
-            addedAt: new Date().toLocaleTimeString(),
-          };
-          
-          setFiles(prev => prev.map(f =>
-            f.id === fileObj.id ? { ...f, status: 'completed', progress: 100, profile } : f
-          ));
-          candidateStore.add(profile);
+          if (!data.neo4j_saved) {
+            setFiles(prev => prev.map(f =>
+              f.id === fileObj.id ? { ...f, status: 'error', progress: 100, errorMsg: 'NLP failed to extract candidate name. Not saved.' } : f
+            ));
+          } else {
+            const initials = d.name && d.name !== "Not Found" ? d.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'CV';
+            
+            const profile = {
+              id: d.id || fileObj.id,
+              name: d.name,
+              initials: initials || 'CV',
+              role: d.experience && d.experience.length > 0 ? d.experience[0].title : 'Software Engineer',
+              match: d.match || Math.floor(Math.random() * 25) + 72,
+              skills: d.skills || [],
+              experience: d.experience && d.experience.length > 0 ? `${d.experience[0].title} at ${d.experience[0].company}` : 'Not detected',
+              location: 'Location not specified',
+              education: d.education && d.education.length > 0 ? d.education[0].degree : 'Not detected',
+              email: d.email,
+              summary: d.summary,
+              projects: [],
+              gradient: 'linear-gradient(135deg,#1a5c38,#22c55e)',
+              source: d.source,
+              addedAt: new Date().toLocaleTimeString(),
+            };
+            
+            setFiles(prev => prev.map(f =>
+              f.id === fileObj.id ? { ...f, status: 'completed', progress: 100, profile } : f
+            ));
+            candidateStore.add(profile);
+          }
         } else {
           setFiles(prev => prev.map(f =>
-            f.id === fileObj.id ? { ...f, status: 'error', progress: 0 } : f
+            f.id === fileObj.id ? { ...f, status: 'error', progress: 0, errorMsg: data.error || 'Server error' } : f
           ));
         }
       })
@@ -278,15 +285,18 @@ const FileCard = ({ fileObj, onRemove, expanded, onToggle }) => {
               {file.name}
             </p>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-              {status === 'parsing' ? `${progress}%` : status === 'completed' ? 'Done' : size}
+              {status === 'parsing' ? `${progress}%` : status === 'completed' ? 'Done' : status === 'error' ? 'Failed' : size}
             </span>
           </div>
           <div className="progress-track">
             <div className="progress-fill" style={{
               width: `${progress}%`,
-              background: status === 'completed' ? 'var(--success)' : 'var(--primary)',
+              background: status === 'completed' ? 'var(--success)' : status === 'error' ? 'var(--danger)' : 'var(--primary)',
             }} />
           </div>
+          {status === 'error' && fileObj.errorMsg && (
+            <p style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{fileObj.errorMsg}</p>
+          )}
         </div>
 
         {/* Status icon */}

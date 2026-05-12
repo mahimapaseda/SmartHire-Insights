@@ -52,6 +52,10 @@ import spacy
 import re
 from neo4j import GraphDatabase
 import atexit
+import os
+import uuid
+import docx
+import math
 
 app = Flask(__name__)
 CORS(app)  # Enable cross-origin requests from React frontend
@@ -106,6 +110,25 @@ def extract_text_from_pdf(uploaded_file):
 
 
 # =========================================================
+# DOCX TEXT EXTRACTION
+# =========================================================
+
+def extract_text_from_docx(file_stream):
+    doc = docx.Document(file_stream)
+    return "\n".join([para.text for para in doc.paragraphs])
+
+
+# =========================================================
+# AI MATCH SCORING
+# =========================================================
+
+def calculate_match_score(skills):
+    hot_skills = {"React", "Python", "Node.js", "AWS", "Docker", "Machine Learning", "NLP", "Java", "Git"}
+    skill_set = set(skills)
+    match_count = len(skill_set.intersection(hot_skills))
+    base_score = 65
+    score = base_score + (match_count * 4) + min(len(skills), 12)
+    return min(score, 99)
 # EXTRACT EMAIL
 # =========================================================
 
@@ -538,8 +561,8 @@ def display_experience(experience_list):
 
 # =========================================================
 
-def store_candidate_in_neo4j(name, email, phone,
-                              skills, education, experience):
+def store_candidate_in_neo4j(candidate_id, name, email, phone,
+                              skills, education, experience, match_score):
 
     print()
     print("=" * 55)
@@ -566,10 +589,12 @@ def store_candidate_in_neo4j(name, email, phone,
             print("  [1/4] Creating Candidate node...")
 
             session.run("""
-                MERGE (c:Candidate {name: $name})
-                SET   c.email = $email,
-                      c.phone = $phone
-            """, name=name, email=email, phone=phone)
+                MERGE (c:Candidate {id: $id})
+                SET   c.name = $name,
+                      c.email = $email,
+                      c.phone = $phone,
+                      c.match_score = $match_score
+            """, id=candidate_id, name=name, email=email, phone=phone, match_score=match_score)
 
             print(f"        Candidate node created  ->  name='{name}'")
 
@@ -675,8 +700,9 @@ def upload_cv():
     if uploaded_file.filename == '':
         return jsonify({"success": False, "error": "No selected file"}), 400
 
-    if not uploaded_file.filename.lower().endswith('.pdf'):
-        return jsonify({"success": False, "error": "Only PDF files are supported"}), 400
+    filename_lower = uploaded_file.filename.lower()
+    if not (filename_lower.endswith('.pdf') or filename_lower.endswith('.docx')):
+        return jsonify({"success": False, "error": "Only PDF and DOCX files are supported"}), 400
 
     try:
         print()
@@ -684,8 +710,17 @@ def upload_cv():
         print(f"PROCESSING CV : {uploaded_file.filename}")
         print("=" * 60)
 
-        # 1. Extract text from PDF
-        extracted_text = extract_text_from_pdf(uploaded_file)
+        os.makedirs("uploads", exist_ok=True)
+        candidate_id = str(uuid.uuid4())
+        file_ext = ".pdf" if filename_lower.endswith('.pdf') else ".docx"
+        file_path = os.path.join("uploads", f"{candidate_id}{file_ext}")
+        uploaded_file.save(file_path)
+
+        with open(file_path, "rb") as f:
+            if filename_lower.endswith('.pdf'):
+                extracted_text = extract_text_from_pdf(f)
+            else:
+                extracted_text = extract_text_from_docx(f)
 
         # 2. Extract specific sections
         education_section = extract_section(
@@ -714,9 +749,11 @@ def upload_cv():
 
         summary = generate_summary(name, skills, education, experience)
 
+        match_score = calculate_match_score(skills)
+
         # 4. Save to Neo4j
         neo4j_ok = store_candidate_in_neo4j(
-            name, email, phone, skills, education, experience
+            candidate_id, name, email, phone, skills, education, experience, match_score
         )
 
         # 5. Return JSON to React
@@ -724,6 +761,7 @@ def upload_cv():
             "success": True,
             "neo4j_saved": neo4j_ok,
             "data": {
+                "id": candidate_id,
                 "name": name,
                 "email": email,
                 "phone": phone,
@@ -731,6 +769,7 @@ def upload_cv():
                 "education": education,
                 "experience": experience,
                 "summary": summary,
+                "match": match_score,
                 "source": uploaded_file.filename
             }
         }), 200
@@ -750,9 +789,11 @@ def get_candidates():
                 OPTIONAL MATCH (c)-[:HAS_SKILL]->(s:Skill)
                 OPTIONAL MATCH (c)-[:WORKED_AS]->(j:JobRole)-[:AT_COMPANY]->(co:Company)
                 OPTIONAL MATCH (c)-[:HAS_EDUCATION]->(d:Degree)-[:STUDIED_AT]->(i:Institution)
-                RETURN c.name AS name, 
+                RETURN c.id AS id,
+                       c.name AS name, 
                        c.email AS email, 
                        c.phone AS phone,
+                       c.match_score AS match_score,
                        collect(DISTINCT s.name) AS skills,
                        collect(DISTINCT {title: j.title, company: co.name, duration: j.duration}) AS experience,
                        collect(DISTINCT {degree: d.name, institution: i.name, year: d.year}) AS education
@@ -773,10 +814,11 @@ def get_candidates():
                 summary = generate_summary(name, skills, edu_list, exp_list)
                 
                 candidates.append({
-                    "id": name.lower().replace(" ", "-"), # generate a simple ID
+                    "id": record.get("id") or name.lower().replace(" ", "-"),
                     "name": name,
                     "email": record["email"] or "Not Found",
                     "phone": record["phone"] or "Not Found",
+                    "match": record.get("match_score") or 70,
                     "skills": skills,
                     "experience": exp_list,
                     "education": edu_list,
