@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search, MapPin, GraduationCap, Mail, Briefcase,
   Clock, ChevronRight, X, Star, Share2, MessageSquare,
@@ -168,17 +169,18 @@ const CandidateRow = ({ candidate: c, onClick, onRemove }) => (
   </div>
 );
 
-const CandidateModal = ({ candidate: c, onClose, onDeepDive }) => (
-  <div
-    style={{
-      position: 'fixed', inset: 0,
-      background: 'var(--modal-bg)',
-      backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1000, padding: '1.5rem',
-    }}
-    onClick={onClose}
-  >
+const CandidateModal = ({ candidate: c, onClose, onDeepDive }) => {
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'var(--modal-bg)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: '1.5rem',
+      }}
+      onClick={onClose}
+    >
     <div
       className="card animate-fade-up"
       style={{ width: '100%', maxWidth: '760px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
@@ -258,8 +260,10 @@ const CandidateModal = ({ candidate: c, onClose, onDeepDive }) => (
         </div>
       </div>
     </div>
-  </div>
-);
+  </div>,
+  document.body
+  );
+};
 
 const SectionTitle = ({ icon, label }) => (
   <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

@@ -262,6 +262,7 @@ const Dashboard = () => {
             cursor: 'pointer', position: 'relative',
             transition: 'var(--transition)',
           }}
+            onClick={() => goTo('settings')}
             onMouseEnter={e => e.target.style.background = '#16a34a'}
             onMouseLeave={e => e.target.style.background = '#22c55e'}
           >
