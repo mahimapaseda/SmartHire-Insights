@@ -21,6 +21,7 @@ import Settings             from '../components/Settings';
 import Help                 from '../components/Help';
 
 import RequirementsImport from '../components/RequirementsImport';
+import { candidateStore } from '../utils/candidateStore';
 
 /* SVG logo mark */
 const Logo = () => (
@@ -77,6 +78,9 @@ const Dashboard = () => {
   useEffect(() => {
     const isAuth = sessionStorage.getItem('sh_auth');
     if (!isAuth) navigate('/login', { replace: true });
+    
+    // Fetch real candidates from Neo4j on load
+    candidateStore.fetchFromNeo4j();
   }, [navigate]);
 
   useEffect(() => {

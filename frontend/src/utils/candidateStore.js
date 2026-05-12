@@ -84,7 +84,7 @@ const SEED = [
 ];
 
 /* ── Store ─────────────────────────────────────────────────────── */
-let _candidates = [...SEED];
+let _candidates = [];
 const _listeners = new Set();
 
 export const candidateStore = {
@@ -93,4 +93,36 @@ export const candidateStore = {
   addMany: (cs)=> { _candidates = [..._candidates, ...cs]; _listeners.forEach(fn => fn()); },
   remove:  (id)=> { _candidates = _candidates.filter(c => c.id !== id); _listeners.forEach(fn => fn()); },
   subscribe:   (fn) => { _listeners.add(fn);    return () => _listeners.delete(fn); },
+  fetchFromNeo4j: async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/candidates');
+      const data = await res.json();
+      if (data.success) {
+        const mapped = data.data.map((c, idx) => {
+          const initials = c.name && c.name !== "Not Found" ? c.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'CV';
+          return {
+            id: c.id || idx,
+            name: c.name,
+            initials: initials || 'CV',
+            role: c.experience && c.experience.length > 0 ? c.experience[0].title : 'Candidate',
+            match: Math.floor(Math.random() * 25) + 72,
+            skills: c.skills || [],
+            experience: c.experience && c.experience.length > 0 ? `${c.experience[0].title} at ${c.experience[0].company}` : 'Not detected',
+            location: 'Location not specified',
+            education: c.education && c.education.length > 0 ? c.education[0].degree : 'Not detected',
+            email: c.email,
+            summary: c.summary,
+            projects: [],
+            gradient: ['linear-gradient(135deg,#1a5c38,#22c55e)','linear-gradient(135deg,#0d3320,#1a5c38)','linear-gradient(135deg,#166534,#4ade80)'][Math.floor(Math.random()*3)],
+            source: 'Neo4j Database',
+            addedAt: new Date().toLocaleTimeString(),
+          };
+        });
+        _candidates = mapped;
+        _listeners.forEach(fn => fn());
+      }
+    } catch (err) {
+      console.error("Failed to fetch candidates from Neo4j", err);
+    }
+  }
 };

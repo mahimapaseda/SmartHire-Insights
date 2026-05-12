@@ -740,6 +740,54 @@ def upload_cv():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/api/candidates', methods=['GET'])
+def get_candidates():
+    try:
+        candidates = []
+        with driver.session() as session:
+            result = session.run("""
+                MATCH (c:Candidate)
+                OPTIONAL MATCH (c)-[:HAS_SKILL]->(s:Skill)
+                OPTIONAL MATCH (c)-[:WORKED_AS]->(j:JobRole)-[:AT_COMPANY]->(co:Company)
+                OPTIONAL MATCH (c)-[:HAS_EDUCATION]->(d:Degree)-[:STUDIED_AT]->(i:Institution)
+                RETURN c.name AS name, 
+                       c.email AS email, 
+                       c.phone AS phone,
+                       collect(DISTINCT s.name) AS skills,
+                       collect(DISTINCT {title: j.title, company: co.name, duration: j.duration}) AS experience,
+                       collect(DISTINCT {degree: d.name, institution: i.name, year: d.year}) AS education
+            """)
+            for record in result:
+                name = record["name"]
+                skills = record["skills"]
+                exp_list = [e for e in record["experience"] if e.get("title") is not None]
+                edu_list = [e for e in record["education"] if e.get("degree") is not None]
+                
+                # Ensure missing keys are gracefully handled just in case
+                for e in exp_list:
+                    e.setdefault("company", "Unknown")
+                for e in edu_list:
+                    e.setdefault("institution", "Unknown")
+                
+                # Mock a summary since we don't store it in Neo4j directly yet
+                summary = generate_summary(name, skills, edu_list, exp_list)
+                
+                candidates.append({
+                    "id": name.lower().replace(" ", "-"), # generate a simple ID
+                    "name": name,
+                    "email": record["email"] or "Not Found",
+                    "phone": record["phone"] or "Not Found",
+                    "skills": skills,
+                    "experience": exp_list,
+                    "education": edu_list,
+                    "summary": summary
+                })
+        return jsonify({"success": True, "data": candidates}), 200
+    except Exception as e:
+        print(f"Error fetching candidates: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("Starting Flask API Server on port 5000...")
     app.run(debug=True, port=5000)
