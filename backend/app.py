@@ -690,6 +690,28 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
 # FLASK API ENDPOINTS
 # =========================================================
 
+@app.route('/api/ping', methods=['GET'])
+def ping_backend():
+    return jsonify({"success": True, "message": "Backend is running!"}), 200
+
+@app.route('/api/neo4j-status', methods=['GET'])
+def neo4j_status():
+    try:
+        with driver.session() as session:
+            session.run("RETURN 1")
+        return jsonify({"success": True, "message": "Connected to Neo4j"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/reset-graph', methods=['DELETE'])
+def reset_graph():
+    try:
+        with driver.session() as session:
+            session.run("MATCH (n) DETACH DELETE n")
+        return jsonify({"success": True, "message": "Graph reset successfully"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/upload', methods=['POST'])
 def upload_cv():
     if 'file' not in request.files:

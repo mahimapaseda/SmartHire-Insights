@@ -63,47 +63,100 @@ const TABS = [
 const Settings = () => {
   const [tab, setTab]       = useState('profile');
   const [saved, setSaved]   = useState(false);
+  const [backendStatus, setBackendStatus] = useState('unknown');
+  const [neo4jStatus, setNeo4jStatus]     = useState('unknown');
+
+  const pingBackend = async () => {
+    setBackendStatus('checking');
+    try {
+      const res = await fetch('http://localhost:5000/api/ping');
+      setBackendStatus(res.ok ? 'online' : 'offline');
+    } catch {
+      setBackendStatus('offline');
+    }
+  };
+
+  const testNeo4j = async () => {
+    setNeo4jStatus('checking');
+    try {
+      const res = await fetch('http://localhost:5000/api/neo4j-status');
+      setNeo4jStatus(res.ok ? 'online' : 'offline');
+    } catch {
+      setNeo4jStatus('offline');
+    }
+  };
+
+  const resetGraph = async () => {
+    if (!window.confirm('Delete all nodes and relationships? This is irreversible.')) return;
+    try {
+      const res = await fetch('http://localhost:5000/api/reset-graph', { method: 'DELETE' });
+      if (res.ok) {
+        alert('Graph reset successfully.');
+        candidateStore.fetchFromNeo4j();
+      } else {
+        alert('Failed to reset graph.');
+      }
+    } catch {
+      alert('Network error while resetting graph.');
+    }
+  };
+
+  const getSaved = (k, defaultVal) => {
+    const v = localStorage.getItem('sh_settings_' + k);
+    return v !== null ? JSON.parse(v) : defaultVal;
+  };
 
   /* Profile */
-  const [name,  setName]    = useState('Mahima');
-  const [email, setEmail]   = useState('mahima@smarthire.ai');
-  const [role,  setRole]    = useState('Lead Recruiter');
-  const [org,   setOrg]     = useState('SmartHire Inc.');
+  const [name,  setName]    = useState(getSaved('name', 'Mahima'));
+  const [email, setEmail]   = useState(getSaved('email', 'mahima@smarthire.ai'));
+  const [role,  setRole]    = useState(getSaved('role', 'Lead Recruiter'));
+  const [org,   setOrg]     = useState(getSaved('org', 'SmartHire Inc.'));
 
   /* Security */
   const [showPw, setShowPw] = useState(false);
-  const [twoFA,  setTwoFA]  = useState(false);
-  const [sessionTimeout, setSessionTimeout] = useState('60');
+  const [twoFA,  setTwoFA]  = useState(getSaved('twoFA', false));
+  const [sessionTimeout, setSessionTimeout] = useState(getSaved('sessionTimeout', '60'));
 
   /* Notifications */
-  const [notifCV,      setNotifCV]      = useState(true);
-  const [notifMatch,   setNotifMatch]   = useState(true);
-  const [notifMsg,     setNotifMsg]     = useState(true);
-  const [notifEmail,   setNotifEmail]   = useState(false);
-  const [notifSound,   setNotifSound]   = useState(true);
+  const [notifCV,      setNotifCV]      = useState(getSaved('notifCV', true));
+  const [notifMatch,   setNotifMatch]   = useState(getSaved('notifMatch', true));
+  const [notifMsg,     setNotifMsg]     = useState(getSaved('notifMsg', true));
+  const [notifEmail,   setNotifEmail]   = useState(getSaved('notifEmail', false));
+  const [notifSound,   setNotifSound]   = useState(getSaved('notifSound', true));
 
   /* NLP */
-  const [nlpModel,     setNlpModel]     = useState('spacy-en-lg');
-  const [minMatch,     setMinMatch]     = useState('70');
-  const [maxFileSize,  setMaxFileSize]  = useState('10');
-  const [autoGraph,    setAutoGraph]    = useState(true);
-  const [autoSummary,  setAutoSummary]  = useState(true);
-  const [batchSize,    setBatchSize]    = useState('5');
+  const [nlpModel,     setNlpModel]     = useState(getSaved('nlpModel', 'spacy-en-lg'));
+  const [minMatch,     setMinMatch]     = useState(getSaved('minMatch', '70'));
+  const [maxFileSize,  setMaxFileSize]  = useState(getSaved('maxFileSize', '10'));
+  const [autoGraph,    setAutoGraph]    = useState(getSaved('autoGraph', true));
+  const [autoSummary,  setAutoSummary]  = useState(getSaved('autoSummary', true));
+  const [batchSize,    setBatchSize]    = useState(getSaved('batchSize', '5'));
 
   /* Database */
-  const [neo4jUri,     setNeo4jUri]     = useState('bolt://localhost:7687');
-  const [neo4jUser,    setNeo4jUser]    = useState('neo4j');
+  const [neo4jUri,     setNeo4jUri]     = useState(getSaved('neo4jUri', 'bolt://localhost:7687'));
+  const [neo4jUser,    setNeo4jUser]    = useState(getSaved('neo4jUser', 'neo4j'));
   const [neo4jPw,      setNeo4jPw]      = useState('');
   const [showNeo4jPw,  setShowNeo4jPw]  = useState(false);
-  const [backendUrl,   setBackendUrl]   = useState('http://localhost:5000');
+  const [backendUrl,   setBackendUrl]   = useState(getSaved('backendUrl', 'http://localhost:5000'));
 
   /* Appearance */
-  const [accentColor,  setAccentColor]  = useState('#1a5c38');
-  const [fontSize,     setFontSize]     = useState('medium');
-  const [compactMode,  setCompactMode]  = useState(false);
-  const [animationsOn, setAnimationsOn] = useState(true);
+  const [accentColor,  setAccentColor]  = useState(getSaved('accentColor', '#1a5c38'));
+  const [fontSize,     setFontSize]     = useState(getSaved('fontSize', 'medium'));
+  const [compactMode,  setCompactMode]  = useState(getSaved('compactMode', false));
+  const [animationsOn, setAnimationsOn] = useState(getSaved('animationsOn', true));
 
   const handleSave = () => {
+    const settingsObj = {
+      name, email, role, org,
+      twoFA, sessionTimeout,
+      notifCV, notifMatch, notifMsg, notifEmail, notifSound,
+      nlpModel, minMatch, maxFileSize, autoGraph, autoSummary, batchSize,
+      neo4jUri, neo4jUser, backendUrl,
+      accentColor, fontSize, compactMode, animationsOn
+    };
+    Object.entries(settingsObj).forEach(([k, v]) => {
+      localStorage.setItem('sh_settings_' + k, JSON.stringify(v));
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -267,12 +320,14 @@ const Settings = () => {
               </div>
             </Field>
             <div style={{ display: 'flex', gap: '0.625rem' }}>
-              <button className="btn-primary" style={{ fontSize: '0.82rem' }}>
+              <button className="btn-primary" style={{ fontSize: '0.82rem' }} onClick={testNeo4j}>
                 <Database size={14} /> Test Connection
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span className="status-dot standby" />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Not connected (mock mode)</span>
+                <span className={`status-dot ${neo4jStatus === 'online' ? 'active' : neo4jStatus === 'offline' ? 'offline' : 'standby'}`} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {neo4jStatus === 'unknown' ? 'Unknown' : neo4jStatus === 'checking' ? 'Checking...' : neo4jStatus === 'online' ? 'Connected' : 'Connection failed'}
+                </span>
               </div>
             </div>
           </Section>
@@ -282,12 +337,14 @@ const Settings = () => {
               <input className="input" value={backendUrl} onChange={e => setBackendUrl(e.target.value)} placeholder="http://localhost:5000" />
             </Field>
             <div style={{ display: 'flex', gap: '0.625rem' }}>
-              <button className="btn-primary" style={{ fontSize: '0.82rem' }}>
+              <button className="btn-primary" style={{ fontSize: '0.82rem' }} onClick={pingBackend}>
                 <Globe size={14} /> Ping Backend
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span className="status-dot standby" />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Not reachable</span>
+                <span className={`status-dot ${backendStatus === 'online' ? 'active' : backendStatus === 'offline' ? 'offline' : 'standby'}`} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {backendStatus === 'unknown' ? 'Unknown' : backendStatus === 'checking' ? 'Pinging...' : backendStatus === 'online' ? 'Online' : 'Unreachable'}
+                </span>
               </div>
             </div>
           </Section>
@@ -378,7 +435,7 @@ const Settings = () => {
                   <p style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--danger)' }}>Reset Neo4j Graph</p>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Delete all nodes and relationships from the database.</p>
                 </div>
-                <button style={{
+                <button onClick={resetGraph} style={{
                   display: 'flex', alignItems: 'center', gap: '0.4rem',
                   padding: '0.5rem 1rem', borderRadius: 'var(--r-sm)',
                   background: 'rgba(239,68,68,0.1)', color: 'var(--danger)',
