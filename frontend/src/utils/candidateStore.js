@@ -105,7 +105,7 @@ export const candidateStore = {
             name: c.name,
             initials: initials || 'CV',
             role: c.experience && c.experience.length > 0 ? c.experience[0].title : 'Candidate',
-            match: Math.floor(Math.random() * 25) + 72,
+            match: c.match || 70,
             skills: c.skills || [],
             experience: c.experience && c.experience.length > 0 ? `${c.experience[0].title} at ${c.experience[0].company}` : 'Not detected',
             location: 'Location not specified',

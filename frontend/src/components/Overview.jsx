@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, FileCheck2, CalendarClock, Database, TrendingUp } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
 
-const ACTIVITY = [
+const ACTIVITY_PLACEHOLDER = [
   { name: 'Software Engineer CV',   status: 'Completed',  time: '2 min ago',  role: 'Full Stack' },
   { name: 'Data Scientist Profile', status: 'Processing', time: '15 min ago', role: 'ML / AI' },
   { name: 'DevOps Lead Resume',     status: 'Completed',  time: '1 hr ago',   role: 'Infrastructure' },
@@ -23,11 +23,20 @@ const STATUS_META = {
 };
 
 const Overview = ({ onIngest }) => {
-  const [candidateCount, setCandidateCount] = useState(candidateStore.getAll().length);
+  const [candidates, setCandidates] = useState(candidateStore.getAll());
 
   useEffect(() => {
-    return candidateStore.subscribe(() => setCandidateCount(candidateStore.getAll().length));
+    return candidateStore.subscribe(() => setCandidates([...candidateStore.getAll()]));
   }, []);
+
+  const candidateCount = candidates.length;
+
+  const ACTIVITY = candidates.length > 0 ? candidates.slice(-4).reverse().map(c => ({
+    name: c.name,
+    status: 'Completed',
+    time: c.addedAt || 'Just now',
+    role: c.role || 'Candidate'
+  })) : ACTIVITY_PLACEHOLDER;
 
   const STATS = [
     { label: 'Parsed CVs',        value: String(candidateCount), delta: 'Increased from last month', icon: FileCheck2,    featured: true },

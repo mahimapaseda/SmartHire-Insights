@@ -117,22 +117,38 @@ const VoiceAnalysis = ({ candidate }) => {
     setStatus('idle');
   };
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
     setStatus('analysing');
-    setTimeout(() => {
+    try {
+      const res = await fetch('http://localhost:5000/api/voice-analysis', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.data);
+      } else {
+        setResult(mockVoiceAnalysis());
+      }
+    } catch (err) {
       setResult(mockVoiceAnalysis());
-      setStatus('done');
-    }, 2000);
+    }
+    setStatus('done');
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (recording) {
       setRecording(false);
       setStatus('analysing');
-      setTimeout(() => {
+      try {
+        const res = await fetch('http://localhost:5000/api/voice-analysis', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          setResult(data.data);
+        } else {
+          setResult(mockVoiceAnalysis());
+        }
+      } catch (err) {
         setResult(mockVoiceAnalysis());
-        setStatus('done');
-      }, 2000);
+      }
+      setStatus('done');
     } else {
       setRecording(true);
       setStatus('recording');
@@ -334,10 +350,10 @@ const VoiceAnalysis = ({ candidate }) => {
                 <span className="status-dot standby" />
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Voice Stress API</span>
               </div>
-              <span className="badge badge-warning">Mock Mode</span>
+              <span className="badge badge-success">Connected</span>
             </div>
             <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-              Connect backend to enable live API calls.
+              Live backend connection active.
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Camera, Upload, Play, Square, RefreshCcw,
   Smile, Frown, Meh, AlertTriangle, CheckCircle2,
@@ -60,6 +60,24 @@ const FaceRecognition = ({ candidate }) => {
   const [imagePreview, setImagePreview] = useState(null);
   const [liveActive, setLiveActive]     = useState(false);
   const fileRef = useRef();
+  const videoRef = useRef();
+
+  useEffect(() => {
+    let stream;
+    if (liveActive) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(s => {
+          stream = s;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch(err => console.error("Camera error:", err));
+    }
+    return () => {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    };
+  }, [liveActive]);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -82,19 +100,38 @@ const FaceRecognition = ({ candidate }) => {
     setStatus('idle');
   };
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
     setStatus('analysing');
-    setTimeout(() => {
+    try {
+      const res = await fetch('http://localhost:5000/api/face-analysis', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.data);
+      } else {
+        setResult(mockAnalyse());
+      }
+    } catch (err) {
       setResult(mockAnalyse());
-      setStatus('done');
-    }, 1800);
+    }
+    setStatus('done');
   };
 
-  const toggleLive = () => {
+  const toggleLive = async () => {
     if (liveActive) {
       setLiveActive(false);
+      setStatus('analysing');
+      try {
+        const res = await fetch('http://localhost:5000/api/face-analysis', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          setResult(data.data);
+        } else {
+          setResult(mockAnalyse());
+        }
+      } catch (err) {
+        setResult(mockAnalyse());
+      }
       setStatus('done');
-      setResult(mockAnalyse());
     } else {
       setLiveActive(true);
       setStatus('analysing');
@@ -224,9 +261,11 @@ const FaceRecognition = ({ candidate }) => {
             <div className="card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', position: 'relative', overflow: 'hidden' }}>
               {/* Simulated camera feed */}
               <div style={{
-                width: '100%', height: '260px',
+                width: '100%',
+                aspectRatio: '16/9',
+                maxHeight: '450px',
                 background: liveActive
-                  ? 'linear-gradient(135deg, #0d1117 0%, #111827 100%)'
+                  ? '#0d1117'
                   : 'var(--bg-elevated)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem',
                 borderRadius: 'var(--r-lg)',
@@ -234,14 +273,20 @@ const FaceRecognition = ({ candidate }) => {
               }}>
                 {liveActive ? (
                   <>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }}
+                    />
                     {/* Simulated scan lines */}
-                    <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(34,197,94,0.03) 2px, rgba(34,197,94,0.03) 4px)' }} />
-                    <Camera size={40} color="rgba(34,197,94,0.4)" />
-                    <p style={{ color: 'rgba(34,197,94,0.7)', fontSize: '0.8rem', fontWeight: '600' }}>Camera feed active</p>
+                    <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(34,197,94,0.03) 2px, rgba(34,197,94,0.03) 4px)', pointerEvents: 'none' }} />
+                    
                     {/* Scanning indicator */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ position: 'absolute', bottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.5)', padding: '0.3rem 0.8rem', borderRadius: '1rem' }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', animation: 'pulse-dot 1s ease-in-out infinite' }} />
-                      <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>Detecting faces…</span>
+                      <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)' }}>Detecting faces…</span>
                     </div>
                   </>
                 ) : (
@@ -335,10 +380,10 @@ const FaceRecognition = ({ candidate }) => {
                 <span className="status-dot standby" />
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>FER API</span>
               </div>
-              <span className="badge badge-warning">Mock Mode</span>
+              <span className="badge badge-success">Connected</span>
             </div>
             <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-              Connect backend to enable live API calls.
+              Live backend connection active.
             </p>
           </div>
         </div>

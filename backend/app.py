@@ -703,6 +703,35 @@ def neo4j_status():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/face-analysis', methods=['POST'])
+def face_analysis():
+    # Placeholder for actual Face Emotion Recognition
+    return jsonify({
+        "success": True, 
+        "data": {
+            "dominant": "Confident",
+            "scores": {"Neutral": 20, "Happy": 15, "Focused": 25, "Nervous": 5, "Confident": 30, "Surprised": 5},
+            "confidence": 89,
+            "frames": 35
+        }
+    }), 200
+
+@app.route('/api/voice-analysis', methods=['POST'])
+def voice_analysis():
+    # Placeholder for actual Voice Stress Detection
+    return jsonify({
+        "success": True, 
+        "data": {
+            "stress": "Low",
+            "stressScore": 22,
+            "traits": {"Clarity": 85, "Pace": 75, "Confidence": 88, "Fluency": 80, "Tone Variation": 70},
+            "wordsPerMin": 135,
+            "pauseCount": 3,
+            "duration": "1:45",
+            "transcript": "Candidate answered technical questions clearly with a steady tone."
+        }
+    }), 200
+
 @app.route('/api/reset-graph', methods=['DELETE'])
 def reset_graph():
     try:
