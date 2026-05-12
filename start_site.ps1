@@ -36,10 +36,10 @@ if ((Test-Path $BackendDir) -and (Get-ChildItem $BackendDir)) {
     if (Test-Path $VenvActivate) {
         Write-Host "  Activating virtual environment..." -ForegroundColor Gray
         Start-Process powershell -ArgumentList `
-            "-NoExit", "-Command", "& `"$VenvActivate`"; python `"$AppScript`""
+            "-NoExit", "-Command", "cd `"$BackendDir`"; & `"$VenvActivate`"; python app.py"
     } else {
         Start-Process powershell -ArgumentList `
-            "-NoExit", "-Command", "python `"$AppScript`""
+            "-NoExit", "-Command", "cd `"$BackendDir`"; python app.py"
     }
 
     Write-Host "  Backend starting at http://localhost:5000" -ForegroundColor Cyan
