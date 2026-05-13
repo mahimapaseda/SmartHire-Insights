@@ -608,10 +608,10 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
 
             for skill in skills:
                 session.run("""
-                    MATCH (c:Candidate {name: $name})
+                    MATCH (c:Candidate {id: $id})
                     MERGE (s:Skill     {name: $skill})
                     MERGE (c)-[:HAS_SKILL]->(s)
-                """, name=name, skill=skill)
+                """, id=candidate_id, skill=skill)
                 print(f"        Skill linked  ->  '{skill}'")
 
             if not skills:
@@ -629,13 +629,13 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
                 year        = edu.get("year",        "Unknown Year")
 
                 session.run("""
-                    MATCH  (c:Candidate   {name:  $name})
+                    MATCH  (c:Candidate   {id:    $id})
                     MERGE  (d:Degree      {name:  $degree})
                     SET    d.year = $year
                     MERGE  (i:Institution {name:  $institution})
                     MERGE  (c)-[:HAS_EDUCATION]->(d)
                     MERGE  (d)-[:STUDIED_AT]->(i)
-                """, name=name, degree=degree,
+                """, id=candidate_id, degree=degree,
                      institution=institution, year=year)
 
                 print(f"        Education node created")
@@ -658,13 +658,13 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
                 duration = exp.get("duration", "Unknown Duration")
 
                 session.run("""
-                    MATCH  (c:Candidate {name:    $name})
+                    MATCH  (c:Candidate {id:      $id})
                     MERGE  (j:JobRole   {title:   $title})
                     SET    j.duration = $duration
                     MERGE  (co:Company  {name:    $company})
                     MERGE  (c)-[:WORKED_AS]->(j)
                     MERGE  (j)-[:AT_COMPANY]->(co)
-                """, name=name, title=title,
+                """, id=candidate_id, title=title,
                      company=company, duration=duration)
 
                 print(f"        Experience node created")

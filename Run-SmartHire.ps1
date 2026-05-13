@@ -11,9 +11,37 @@ $FrontendDir = Join-Path $RootDir "frontend"
 Write-Host "--- Initializing SmartHire Insights ---" -ForegroundColor Cyan
 Write-Host "Root: $RootDir" -ForegroundColor DarkGray
 
-# == 1. Backend Setup & Run =======================================
+# == 1. Start Neo4j Database ======================================
+Write-Host "`n[1/3] Checking Neo4j Database..." -ForegroundColor Yellow
+$Neo4jRunning = Get-Process "Neo4j Desktop" -ErrorAction SilentlyContinue
+if (-not $Neo4jRunning) {
+    Write-Host "  Neo4j Desktop is not running. Attempting to start..." -ForegroundColor Gray
+    $Neo4jPaths = @(
+        "$env:LOCALAPPDATA\Programs\Neo4j Desktop\Neo4j Desktop.exe",
+        "C:\Program Files\Neo4j Desktop\Neo4j Desktop.exe"
+    )
+    $Neo4jFound = $false
+    foreach ($Path in $Neo4jPaths) {
+        if (Test-Path $Path) {
+            Write-Host "  Found Neo4j Desktop at $Path" -ForegroundColor Gray
+            Start-Process $Path
+            $Neo4jFound = $true
+            break
+        }
+    }
+    if (-not $Neo4jFound) {
+        Write-Warning "  Could not find Neo4j Desktop automatically. Please start it manually."
+    } else {
+        Write-Host "  Please ensure your Neo4j database is active in the desktop app!" -ForegroundColor Cyan
+        Start-Sleep -Seconds 3 # Give it a moment to begin launching
+    }
+} else {
+    Write-Host "  Neo4j Desktop is already running." -ForegroundColor Green
+}
+
+# == 2. Backend Setup & Run =======================================
 if (Test-Path $BackendDir) {
-    Write-Host "`n[1/2] Processing Backend (Python)..." -ForegroundColor Yellow
+    Write-Host "`n[2/3] Processing Backend (Python)..." -ForegroundColor Yellow
 
     # Setup Virtual Environment
     if (-Not (Test-Path $VenvDir)) {
@@ -50,9 +78,9 @@ if (Test-Path $BackendDir) {
     Write-Warning "Backend directory not found at: $BackendDir"
 }
 
-# == 2. Frontend Setup & Run ======================================
+# == 3. Frontend Setup & Run ======================================
 if (Test-Path $FrontendDir) {
-    Write-Host "`n[2/2] Processing Frontend (React)..." -ForegroundColor Yellow
+    Write-Host "`n[3/3] Processing Frontend (React)..." -ForegroundColor Yellow
 
     # Setup node_modules
     if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
