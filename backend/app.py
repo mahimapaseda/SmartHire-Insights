@@ -208,44 +208,6 @@ def extract_phone(text):
 
 
 # =========================================================
-# EXTRACT CANDIDATE NAME
-# =========================================================
-
-def extract_name(text):
-
-    # Filter out empty lines to avoid wasting the initial line checks
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
-    # Increase the search space slightly
-    combined = " ".join(lines[:15])
-    doc      = nlp(combined)
-
-    blacklist = [
-        "curriculum vitae", "resume", "cv", "reference",
-        "profile", "summary", "objective", "personal details", "name"
-    ]
-
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            candidate_name = ent.text.strip()
-            if candidate_name.lower() not in blacklist:
-                if 1 < len(candidate_name.split()) <= 5:
-                    return candidate_name
-
-    # Fallback: check the first few valid lines
-    for line in lines[:5]:
-        if (
-            len(line.split()) <= 5
-            and not any(kw in line.lower() for kw in blacklist)
-            and not re.search(r'[@\d]', line)
-        ):
-            return line
-
-    # If all fails, return a default string rather than completely breaking
-    return "Unknown Candidate"
-
-
-# =========================================================
 # SKILLS DATABASE
 # =========================================================
 
@@ -266,6 +228,54 @@ skills_database = [
     "Selenium", "Postman", "QA", "Manual Testing", "Automation Testing", 
     "Jira", "SDLC", "STLC", "Software Testing", "Bug Tracking", "Cucumber"
 ]
+
+
+# =========================================================
+# EXTRACT CANDIDATE NAME
+# =========================================================
+
+def extract_name(text):
+
+    # Filter out empty lines to avoid wasting the initial line checks
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    # Increase the search space slightly
+    combined = " ".join(lines[:15])
+    doc      = nlp(combined)
+
+    blacklist = [
+        "curriculum vitae", "resume", "cv", "reference",
+        "profile", "summary", "objective", "personal details", "name"
+    ]
+
+    for ent in doc.ents:
+        if ent.label_ == "PERSON":
+            candidate_name = ent.text.strip()
+            # Clean up potential artifacts
+            candidate_name = re.sub(r'[^a-zA-Z\s]', '', candidate_name)
+            if candidate_name.lower() not in blacklist and candidate_name not in skills_database:
+                if 1 < len(candidate_name.split()) <= 4:
+                    return candidate_name.title()
+
+    # Fallback: check the first few valid lines
+    for line in lines[:5]:
+        if (
+            len(line.split()) <= 5
+            and not any(kw in line.lower() for kw in blacklist)
+            and not re.search(r'[@\d]', line)
+        ):
+            return line
+
+    # If all fails, return a default string rather than completely breaking
+    # If all fails, return 'Not Found' to trigger rejection
+    return "Not Found"
+
+
+# =========================================================
+# SKILLS DATABASE
+# =========================================================
+
+# (skills_database moved up)
 
 
 # =========================================================
@@ -592,7 +602,7 @@ def generate_summary(name, skills, education, experience):
 # =========================================================
 
 def store_candidate_in_neo4j(candidate_id, name, email, phone,
-                              skills, education, experience, match_score):
+                              skills, education, experience, match_score, source):
 
     print()
     print("=" * 55)
@@ -623,8 +633,11 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
                 SET   c.name = $name,
                       c.email = $email,
                       c.phone = $phone,
-                      c.match_score = $match_score
-            """, id=candidate_id, name=name, email=email, phone=phone, match_score=match_score)
+                      c.match_score = $match_score,
+                      c.source = $source,
+                      c.addedAt = datetime()
+            """, id=candidate_id, name=name, email=email, phone=phone, 
+                 match_score=match_score, source=source)
 
             print(f"        Candidate node created  ->  name='{name}'")
 
@@ -838,7 +851,7 @@ def upload_cv():
 
         # 4. Save to Neo4j
         neo4j_ok = store_candidate_in_neo4j(
-            candidate_id, name, email, phone, skills, education, experience, match_score
+            candidate_id, name, email, phone, skills, education, experience, match_score, uploaded_file.filename
         )
 
         # 5. Return JSON to React
