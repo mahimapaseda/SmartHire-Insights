@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   FileText, Upload, Plus, X, CheckCircle2, 
   Loader2, Briefcase, Zap, Search, ArrowRight,
@@ -17,36 +17,50 @@ const RequirementsImport = ({ onComplete }) => {
   const [extracted, setExtracted] = useState(null);
   const fileRef = useRef();
 
-  const handleFileUpload = (e) => {
+  useEffect(() => {
+    requirementsStore.fetchFromBackend();
+    return requirementsStore.subscribe(() => setExtracted(null)); // Refresh on store change
+  }, []);
+
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Simulate reading file
-    startExtraction(`Job Description for ${file.name.replace(/\.[^/.]+$/, "")}`);
+    
+    // In a full implementation, you'd extract text from the file first.
+    // For now, we'll use the file name as a hint.
+    startExtraction(`Job Description for ${file.name.replace(/\.[^/.]+$/, "")}`, `Requirements for ${file.name}`);
   };
 
-  const startExtraction = (titleHint = '') => {
-    if (!text && !titleHint) return;
+  const startExtraction = async (titleHint = '', customText = '') => {
+    const inputText = customText || text;
+    if (!inputText && !titleHint) return;
     setStep('extracting');
     
-    // Simulate AI extraction delay
-    setTimeout(() => {
-      setExtracted({
-        title: titleHint || 'Software Engineer',
-        role: 'Engineering',
-        skills: ['React', 'Node.js', 'PostgreSQL', 'AWS'],
-        experience: 4,
-        summary: 'Strategic role focusing on scalable cloud architectures and modern frontend frameworks.',
+    try {
+      const res = await fetch('http://localhost:5000/api/requirements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: inputText, title: titleHint })
       });
-      setStep('review');
-    }, 2000);
+      const data = await res.json();
+      if (data.success) {
+        setExtracted(data.data);
+        setStep('review');
+      }
+    } catch (err) {
+      console.error("Extraction failed:", err);
+      setStep('input');
+    }
   };
 
-  const saveRequirement = () => {
-    requirementsStore.add({
-      ...extracted,
-      description: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
-    });
+  const saveRequirement = async () => {
+    await requirementsStore.add(extracted);
     if (onComplete) onComplete();
+  };
+
+  const addSkill = (skill) => {
+    if (!skill || extracted.skills.includes(skill)) return;
+    setExtracted({ ...extracted, skills: [...extracted.skills, skill] });
   };
 
   return (
@@ -151,7 +165,14 @@ const RequirementsImport = ({ onComplete }) => {
                         {skill} <X size={12} style={{ marginLeft: '4px', cursor: 'pointer' }} onClick={() => setExtracted({...extracted, skills: extracted.skills.filter(s => s !== skill)})} />
                       </span>
                     ))}
-                    <button className="skill-tag" style={{ borderStyle: 'dashed' }}>
+                    <button 
+                      className="skill-tag" 
+                      style={{ borderStyle: 'dashed' }}
+                      onClick={() => {
+                        const s = prompt("Enter skill name:");
+                        if (s) addSkill(s);
+                      }}
+                    >
                       <Plus size={12} /> Add Skill
                     </button>
                   </div>

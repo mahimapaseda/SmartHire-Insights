@@ -15,23 +15,46 @@ const SEED_REQUIREMENTS = [
   }
 ];
 
-let _requirements = [...SEED_REQUIREMENTS];
+let _requirements = [];
 const _listeners = new Set();
 
 export const requirementsStore = {
   getAll: () => _requirements,
-  add: (req) => {
-    const newReq = {
-      id: crypto.randomUUID(),
-      addedAt: new Date().toLocaleTimeString(),
-      ...req
-    };
-    _requirements = [newReq, ..._requirements];
-    _listeners.forEach(fn => fn());
+  add: async (req) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/requirements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req)
+      });
+      const data = await res.json();
+      if (data.success) {
+        _requirements = [data.data, ..._requirements];
+        _listeners.forEach(fn => fn());
+        return data.data;
+      }
+    } catch (err) {
+      console.error("Failed to add requirement:", err);
+    }
   },
-  remove: (id) => {
+  remove: async (id) => {
+    // UI optimistic update
     _requirements = _requirements.filter(r => r.id !== id);
     _listeners.forEach(fn => fn());
+    
+    // In a real app, you'd add DELETE /api/requirements/<id>
+  },
+  fetchFromBackend: async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/requirements');
+      const data = await res.json();
+      if (data.success) {
+        _requirements = data.data;
+        _listeners.forEach(fn => fn());
+      }
+    } catch (err) {
+      console.error("Failed to fetch requirements:", err);
+    }
   },
   subscribe: (fn) => {
     _listeners.add(fn);

@@ -223,7 +223,9 @@ skills_database = [
     "AWS", "Azure", "Google Cloud", "Cloud Computing", "Docker", "Kubernetes",
     "Git", "Linux", "Bash", "Agile", "Scrum", "DevOps", "CI/CD",
     "Streamlit", "Power BI", "Tableau", "Excel",
-    "Artificial Intelligence", "Neo4j", "Spark", "Hadoop"
+    "Artificial Intelligence", "Neo4j", "Spark", "Hadoop",
+    "Selenium", "Postman", "QA", "Manual Testing", "Automation Testing", 
+    "Jira", "SDLC", "STLC", "Software Testing", "Bug Tracking", "Cucumber"
 ]
 
 
@@ -851,6 +853,124 @@ def upload_cv():
         print(f"Error processing CV: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+# =========================================================
+# STORE REQUIREMENT IN NEO4J
+# =========================================================
+
+def store_requirement_in_neo4j(req_id, title, role, skills, summary, description):
+    try:
+        with driver.session() as session:
+            session.run("""
+                MERGE (r:Requirement {id: $id})
+                SET   r.title = $title,
+                      r.role = $role,
+                      r.summary = $summary,
+                      r.description = $description,
+                      r.addedAt = datetime()
+            """, id=req_id, title=title, role=role, summary=summary, description=description)
+
+            # Link skills
+            for skill in skills:
+                session.run("""
+                    MATCH (r:Requirement {id: $id})
+                    MERGE (s:Skill {name: $skill})
+                    MERGE (r)-[:REQUIRES_SKILL]->(s)
+                """, id=req_id, skill=skill)
+        return True
+    except Exception as e:
+        print(f"  Neo4j Requirement Error: {str(e)}")
+        return False
+
+def extract_job_title(text):
+    """Extract a job title from the first line or sentence of a description."""
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    if not lines: return "Software Engineer"
+    
+    first_line = lines[0]
+    # If first line is short, it's likely the title
+    if len(first_line.split()) <= 5:
+        return first_line
+        
+    # Otherwise, look for "We are looking for a [Title]" or similar
+    doc = nlp(text[:200])
+    for chunk in doc.noun_chunks:
+        if any(kw in chunk.text.lower() for kw in ["engineer", "developer", "intern", "analyst", "manager", "lead"]):
+            return chunk.text.title()
+            
+    return first_line.split('.')[0].strip()[:50] # Fallback to first sentence
+
+@app.route('/api/requirements', methods=['POST'])
+def add_requirement():
+    data = request.json
+    req_id = str(uuid.uuid4())
+    
+    text = data.get('text', '')
+    title = data.get('title', '')
+    role = data.get('role', 'Engineering')
+    skills = data.get('skills', [])
+    summary = data.get('summary', '')
+    
+    if text:
+        if not title or title.startswith("Job Description"):
+            title = extract_job_title(text)
+        if not skills:
+            skills = extract_skills(text)
+        if not summary:
+            summary = text[:200] + "..." if len(text) > 200 else text
+            
+        # Guess role
+        text_lower = text.lower()
+        if any(kw in text_lower for kw in ["qa", "testing", "quality", "automation"]):
+            role = "Quality Assurance"
+        elif any(kw in text_lower for kw in ["frontend", "react", "ui", "ux"]):
+            role = "Frontend Engineering"
+        elif any(kw in text_lower for kw in ["backend", "node", "python", "java"]):
+            role = "Backend Engineering"
+        else:
+            role = "Engineering"
+            
+    if not title: title = "Software Engineer"
+    
+    success = store_requirement_in_neo4j(req_id, title, role, skills, summary, text)
+    
+    if success:
+        return jsonify({
+            "success": True, 
+            "data": {
+                "id": req_id, "title": title, "role": role, 
+                "skills": skills, "summary": summary
+            }
+        }), 201
+    return jsonify({"success": False, "error": "Failed to save requirement"}), 500
+
+@app.route('/api/requirements', methods=['GET'])
+def get_requirements():
+    try:
+        requirements = []
+        with driver.session() as session:
+            result = session.run("""
+                MATCH (r:Requirement)
+                OPTIONAL MATCH (r)-[:REQUIRES_SKILL]->(s:Skill)
+                RETURN r.id AS id, r.title AS title, r.role AS role, 
+                       r.summary AS summary, r.description AS description,
+                       r.addedAt AS addedAt,
+                       collect(s.name) AS skills
+                ORDER BY r.addedAt DESC
+            """)
+            for record in result:
+                requirements.append({
+                    "id": record["id"],
+                    "title": record["title"],
+                    "role": record["role"],
+                    "summary": record["summary"],
+                    "description": record["description"],
+                    "skills": record["skills"],
+                    "addedAt": str(record["addedAt"])
+                })
+        return jsonify({"success": True, "data": requirements}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/candidates', methods=['GET'])
 def get_candidates():
