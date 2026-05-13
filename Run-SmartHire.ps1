@@ -11,6 +11,13 @@ $FrontendDir = Join-Path $RootDir "frontend"
 Write-Host "--- Initializing SmartHire Insights ---" -ForegroundColor Cyan
 Write-Host "Root: $RootDir" -ForegroundColor DarkGray
 
+# == 0. Check Execution Policy =====================================
+$Policy = Get-ExecutionPolicy
+if ($Policy -eq "Restricted" -or $Policy -eq "AllSigned") {
+    Write-Warning "Current Execution Policy is '$Policy'. This may prevent the backend virtual environment from activating correctly."
+    Write-Host "Tip: Run 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser' in an admin PowerShell to fix this." -ForegroundColor Gray
+}
+
 # == 1. Start Neo4j Database ======================================
 Write-Host "`n[1/3] Checking Neo4j Database..." -ForegroundColor Yellow
 $Neo4jRunning = Get-Process "Neo4j Desktop" -ErrorAction SilentlyContinue
@@ -67,11 +74,11 @@ if (Test-Path $BackendDir) {
     }
 
     # Start Backend Server
-    $VenvActivate = Join-Path $VenvDir "Scripts\Activate.ps1"
-    if (Test-Path $VenvActivate) {
+    if (Test-Path $PythonExe) {
         Write-Host "  Starting Backend Server at http://localhost:5000" -ForegroundColor Cyan
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$BackendDir`"; & `"$VenvActivate`"; python app.py"
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$BackendDir`"; & `"$PythonExe`" app.py"
     } else {
+        Write-Warning "  Python executable not found in venv. Attempting system python..."
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$BackendDir`"; python app.py"
     }
 } else {
