@@ -13,6 +13,8 @@ Write-Host "Root: $RootDir" -ForegroundColor DarkGray
 
 # == 1. Start Neo4j Database ======================================
 Write-Host "`n[1/3] Checking Neo4j Database..." -ForegroundColor Yellow
+
+# Attempt to start Desktop app if not running
 $Neo4jRunning = Get-Process "Neo4j Desktop" -ErrorAction SilentlyContinue
 if (-not $Neo4jRunning) {
     Write-Host "  Neo4j Desktop is not running. Attempting to start..." -ForegroundColor Gray
@@ -20,24 +22,35 @@ if (-not $Neo4jRunning) {
         "$env:LOCALAPPDATA\Programs\Neo4j Desktop\Neo4j Desktop.exe",
         "C:\Program Files\Neo4j Desktop\Neo4j Desktop.exe"
     )
-    $Neo4jFound = $false
     foreach ($Path in $Neo4jPaths) {
         if (Test-Path $Path) {
-            Write-Host "  Found Neo4j Desktop at $Path" -ForegroundColor Gray
             Start-Process $Path
-            $Neo4jFound = $true
             break
         }
     }
-    if (-not $Neo4jFound) {
-        Write-Warning "  Could not find Neo4j Desktop automatically. Please start it manually."
-    } else {
-        Write-Host "  Please ensure your Neo4j database is active in the desktop app!" -ForegroundColor Cyan
-        Start-Sleep -Seconds 3 # Give it a moment to begin launching
-    }
-} else {
-    Write-Host "  Neo4j Desktop is already running." -ForegroundColor Green
 }
+
+# Now, wait for the actual Database port (Bolt) to be active
+Write-Host "  Waiting for Neo4j Database port (7687) to become active..." -ForegroundColor Cyan
+Write-Host "  (IMPORTANT: You must manually CLICK 'START' on your database in Neo4j Desktop)" -ForegroundColor DarkCyan
+
+$maxWait = 60
+$spent = 0
+while ($spent -lt $maxWait) {
+    $portCheck = Get-NetTCPConnection -LocalPort 7687 -ErrorAction SilentlyContinue
+    if ($portCheck) {
+        Write-Host "`n  Neo4j Database is online and ready!" -ForegroundColor Green
+        break
+    }
+    Write-Host "." -NoNewline
+    Start-Sleep -Seconds 3
+    $spent += 3
+}
+
+if (-not (Get-NetTCPConnection -LocalPort 7687 -ErrorAction SilentlyContinue)) {
+    Write-Warning "`n  Timed out waiting for Neo4j (7687). Please ensure your database is running."
+}
+
 
 # == 2. Backend Setup & Run =======================================
 if (Test-Path $BackendDir) {
