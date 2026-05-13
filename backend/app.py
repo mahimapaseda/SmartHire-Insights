@@ -69,12 +69,12 @@ nlp = spacy.load("en_core_web_sm")
 
 
 # =========================================================
-# NEO4J CONNECTION  (Desktop - no TLS, no database= arg)
+# NEO4J CONNECTION (Env variables for Docker/Production)
 # =========================================================
 
-NEO4J_URI      = "neo4j://127.0.0.1:7687"
-NEO4J_USER     = "neo4j"
-NEO4J_PASSWORD = "neo4j123"
+NEO4J_URI      = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687")
+NEO4J_USER     = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "neo4j123")
 
 driver = GraphDatabase.driver(
     NEO4J_URI,
@@ -84,10 +84,28 @@ driver = GraphDatabase.driver(
 atexit.register(driver.close)
 
 print("=" * 55)
-print("  Neo4j Driver Initialised")
-print(f"  URI      : {NEO4J_URI}")
-print(f"  User     : {NEO4J_USER}")
-print("=" * 55)
+
+# =========================================================
+# DATABASE INITIALIZATION (INDEXES)
+# =========================================================
+
+def init_db():
+    print("  Initializing Database Indexes...")
+    queries = [
+        "CREATE INDEX candidate_id_idx IF NOT EXISTS FOR (c:Candidate) ON (c.id)",
+        "CREATE INDEX skill_name_idx IF NOT EXISTS FOR (s:Skill) ON (s.name)",
+        "CREATE INDEX company_name_idx IF NOT EXISTS FOR (co:Company) ON (co.name)",
+        "CREATE INDEX inst_name_idx IF NOT EXISTS FOR (i:Institution) ON (i.name)"
+    ]
+    try:
+        with driver.session() as session:
+            for q in queries:
+                session.run(q)
+        print("  Indexes verified/created successfully.")
+    except Exception as e:
+        print(f"  Note: Index creation skipped or failed: {str(e)}")
+
+init_db()
 
 
 # =========================================================
@@ -221,6 +239,7 @@ def extract_skills(text):
     for skill in skills_database:
         pattern = r'\b' + re.escape(skill.lower()) + r'\b'
         if re.search(pattern, text_lower):
+            # Normalize to the case found in our database
             found_skills.append(skill)
 
     return sorted(set(found_skills))
@@ -653,9 +672,9 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
 
             for exp in experience:
 
-                title    = exp.get("title",    "Unknown Title")
-                company  = exp.get("company",  "Unknown Company")
-                duration = exp.get("duration", "Unknown Duration")
+                title    = exp.get("title",    "Unknown Title").strip()
+                company  = exp.get("company",  "Unknown Company").strip()
+                duration = exp.get("duration", "Unknown Duration").strip()
 
                 session.run("""
                     MATCH  (c:Candidate {id:      $id})
@@ -884,6 +903,25 @@ def get_candidates():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/api/candidates/<candidate_id>', methods=['DELETE'])
+def delete_candidate(candidate_id):
+    """Delete a candidate and all their relationships from Neo4j."""
+    print(f"  Deleting Candidate: {candidate_id}")
+    try:
+        with driver.session() as session:
+            # DETACH DELETE removes the node and all its incoming/outgoing relationships
+            result = session.run("MATCH (c:Candidate {id: $id}) DETACH DELETE c RETURN count(c) as count", id=candidate_id)
+            count = result.single()["count"]
+            
+        if count == 0:
+            return jsonify({"success": False, "error": "Candidate not found"}), 404
+            
+        return jsonify({"success": True, "message": "Candidate deleted successfully"}), 200
+    except Exception as e:
+        print(f"  Delete Error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("Starting Flask API Server on port 5000...")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000)

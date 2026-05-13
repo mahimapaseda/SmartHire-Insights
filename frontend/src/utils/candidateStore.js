@@ -91,7 +91,23 @@ export const candidateStore = {
   getAll:  ()  => _candidates,
   add:     (c) => { _candidates = [..._candidates, c]; _listeners.forEach(fn => fn()); },
   addMany: (cs)=> { _candidates = [..._candidates, ...cs]; _listeners.forEach(fn => fn()); },
-  remove:  (id)=> { _candidates = _candidates.filter(c => c.id !== id); _listeners.forEach(fn => fn()); },
+  remove:  async (id)=> { 
+    // UI optimistic update
+    _candidates = _candidates.filter(c => c.id !== id); 
+    _listeners.forEach(fn => fn()); 
+    
+    // Server sync
+    try {
+      const res = await fetch(`http://localhost:5000/api/candidates/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) {
+        console.error("Failed to delete from server:", data.error);
+        // Optional: you could re-fetch or rollback here if strict consistency is needed
+      }
+    } catch (err) {
+      console.error("Network error while deleting candidate:", err);
+    }
+  },
   subscribe:   (fn) => { _listeners.add(fn);    return () => _listeners.delete(fn); },
   fetchFromNeo4j: async () => {
     try {

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # 1. Neo4j Graph Database
+  neo4j:
+    image: neo4j:5.12
+    container_name: smarthire_neo4j
+    ports:
+      - "7474:7474" # HTTP Browser
+      - "7687:7687" # Bolt Protocol
+    environment:
+      - NEO4J_AUTH=neo4j/neo4j123
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+  # 2. Python Flask Backend (NLP Engine)
+  backend:
+    build: ./backend
+    container_name: smarthire_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=neo4j123
+    depends_on:
+      - neo4j
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  # 3. React/Vite Frontend
+  frontend:
+    build: ./frontend
+    container_name: smarthire_frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
