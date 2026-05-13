@@ -156,29 +156,17 @@ def extract_phone(text):
 
 def extract_name(text):
 
-    # Filter out empty lines
+    # Filter out empty lines to avoid wasting the initial line checks
     lines = [line.strip() for line in text.split('\n') if line.strip()]
-    if not lines:
-        return "Not Found"
+    
+    # Increase the search space slightly
+    combined = " ".join(lines[:15])
+    doc      = nlp(combined)
 
     blacklist = [
         "curriculum vitae", "resume", "cv", "reference",
         "profile", "summary", "objective", "personal details", "name"
     ]
-
-    # Heuristic 1: Check the first 3 lines for a short, non-blacklisted string
-    # Usually names are at the very top and on their own line
-    for line in lines[:3]:
-        if (
-            len(line.split()) <= 4 
-            and not any(kw in line.lower() for kw in blacklist)
-            and not re.search(r'[@\d]', line)
-        ):
-            return line
-
-    # Heuristic 2: Use spaCy NER on the first 15 lines
-    combined = " ".join(lines[:15])
-    doc      = nlp(combined)
 
     for ent in doc.ents:
         if ent.label_ == "PERSON":
@@ -196,8 +184,8 @@ def extract_name(text):
         ):
             return line
 
-    # If all fails, return a default string that the storage guard can catch
-    return "Not Found"
+    # If all fails, return a default string rather than completely breaking
+    return "Unknown Candidate"
 
 
 # =========================================================
