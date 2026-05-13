@@ -4,7 +4,6 @@ import {
   Smile, Frown, Meh, AlertTriangle, CheckCircle2,
   ChevronDown, Info,
 } from 'lucide-react';
-import apiFetch from '../utils/api';
 
 /* ── Mock API response generator ─────────────────────────────── */
 const EMOTIONS = ['Neutral', 'Happy', 'Focused', 'Nervous', 'Confident', 'Surprised'];
@@ -104,9 +103,14 @@ const FaceRecognition = ({ candidate }) => {
   const runAnalysis = async () => {
     setStatus('analysing');
     try {
-      const data = await apiFetch('/api/face-analysis', { method: 'POST' });
-      setResult(data.data);
-    } catch {
+      const res = await fetch('http://localhost:5000/api/face-analysis', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.data);
+      } else {
+        setResult(mockAnalyse());
+      }
+    } catch (err) {
       setResult(mockAnalyse());
     }
     setStatus('done');
@@ -117,9 +121,14 @@ const FaceRecognition = ({ candidate }) => {
       setLiveActive(false);
       setStatus('analysing');
       try {
-        const data = await apiFetch('/api/face-analysis', { method: 'POST' });
-        setResult(data.data);
-      } catch {
+        const res = await fetch('http://localhost:5000/api/face-analysis', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          setResult(data.data);
+        } else {
+          setResult(mockAnalyse());
+        }
+      } catch (err) {
         setResult(mockAnalyse());
       }
       setStatus('done');

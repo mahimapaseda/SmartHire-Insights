@@ -36,9 +36,6 @@ services:
     container_name: smarthire_frontend
     ports:
       - "5173:5173"
-    environment:
-      # Vite proxy target — inside Docker the backend is reachable by service name
-      - VITE_API_URL=http://backend:5000
     depends_on:
       - backend
 

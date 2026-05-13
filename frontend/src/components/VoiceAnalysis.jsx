@@ -4,7 +4,6 @@ import {
   RefreshCcw, Volume2, AlertTriangle,
   CheckCircle2, Activity, BarChart2,
 } from 'lucide-react';
-import apiFetch from '../utils/api';
 
 /* ── Mock API ─────────────────────────────────────────────────── */
 const STRESS_LEVELS = ['Low', 'Moderate', 'High'];
@@ -120,12 +119,15 @@ const VoiceAnalysis = ({ candidate }) => {
 
   const runAnalysis = async () => {
     setStatus('analysing');
-  const runAnalysis = async () => {
-    setStatus('analysing');
     try {
-      const data = await apiFetch('/api/voice-analysis', { method: 'POST' });
-      setResult(data.data);
-    } catch {
+      const res = await fetch('http://localhost:5000/api/voice-analysis', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data.data);
+      } else {
+        setResult(mockVoiceAnalysis());
+      }
+    } catch (err) {
       setResult(mockVoiceAnalysis());
     }
     setStatus('done');
@@ -136,12 +138,7 @@ const VoiceAnalysis = ({ candidate }) => {
       setRecording(false);
       setStatus('analysing');
       try {
-        const data = await apiFetch('/api/voice-analysis', { method: 'POST' });
-        setResult(data.data);
-      } catch {
-        setResult(mockVoiceAnalysis());
-      }
-      setStatus('done');
+        const res = await fetch('http://localhost:5000/api/voice-analysis', { method: 'POST' });
         if (res.ok) {
           const data = await res.json();
           setResult(data.data);

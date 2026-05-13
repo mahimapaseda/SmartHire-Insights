@@ -5,7 +5,6 @@ import {
   ClipboardList, AlertCircle
 } from 'lucide-react';
 import { requirementsStore } from '../utils/requirementsStore';
-import apiFetch from '../utils/api';
 
 const SKILL_SUGGESTIONS = [
   'React', 'Node.js', 'Python', 'AWS', 'Neo4j', 'PostgreSQL', 
@@ -38,17 +37,18 @@ const RequirementsImport = ({ onComplete }) => {
     setStep('extracting');
     
     try {
-      const data = await apiFetch('/api/requirements', {
+      const res = await fetch('http://localhost:5000/api/requirements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText, title: titleHint }),
+        body: JSON.stringify({ text: inputText, title: titleHint })
       });
+      const data = await res.json();
       if (data.success) {
         setExtracted(data.data);
         setStep('review');
       }
     } catch (err) {
-      console.error('Extraction failed:', err.message);
+      console.error("Extraction failed:", err);
       setStep('input');
     }
   };

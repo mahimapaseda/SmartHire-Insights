@@ -55,30 +55,10 @@ import atexit
 import os
 import uuid
 import docx
+import math
 
 app = Flask(__name__)
 CORS(app)  # Enable cross-origin requests from React frontend
-
-# =========================================================
-# API KEY AUTHENTICATION
-# =========================================================
-# Set API_SECRET_KEY env var in production.
-# Defaults to a dev-only key so the app still runs locally
-# without configuration.  All mutating / destructive routes
-# require this key in the X-API-Key header.
-
-API_SECRET_KEY = os.getenv("API_SECRET_KEY", "dev-secret-key-change-in-production")
-
-def require_api_key(f):
-    """Decorator that enforces X-API-Key header on sensitive endpoints."""
-    from functools import wraps
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        key = request.headers.get("X-API-Key", "")
-        if key != API_SECRET_KEY:
-            return jsonify({"success": False, "error": "Unauthorized"}), 401
-        return f(*args, **kwargs)
-    return decorated
 
 
 # =========================================================
@@ -564,6 +544,42 @@ def generate_summary(name, skills, education, experience):
 
 
 # =========================================================
+# DISPLAY HELPERS
+# =========================================================
+
+def display_education(education_list):
+
+    if not education_list:
+        st.write("No education details found.")
+        return
+
+    for edu in education_list:
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"**{edu['degree']}**")
+            st.caption(edu['institution'])
+        with col2:
+            st.markdown(f"🗓 {edu['year']}")
+        st.divider()
+
+
+def display_experience(experience_list):
+
+    if not experience_list:
+        st.write("No work experience details found.")
+        return
+
+    for exp in experience_list:
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown(f"**{exp['title']}**")
+            st.caption(exp['company'])
+        with col2:
+            st.markdown(f"🗓 {exp['duration']}")
+        st.divider()
+
+
+# =========================================================
 # STORE DATA IN NEO4J
 # =========================================================
 
@@ -741,7 +757,6 @@ def voice_analysis():
     }), 200
 
 @app.route('/api/reset-graph', methods=['DELETE'])
-@require_api_key
 def reset_graph():
     try:
         with driver.session() as session:
@@ -751,7 +766,6 @@ def reset_graph():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/upload', methods=['POST'])
-@require_api_key
 def upload_cv():
     if 'file' not in request.files:
         return jsonify({"success": False, "error": "No file uploaded"}), 400
@@ -887,7 +901,6 @@ def extract_job_title(text):
     return first_line.split('.')[0].strip()[:50] # Fallback to first sentence
 
 @app.route('/api/requirements', methods=['POST'])
-@require_api_key
 def add_requirement():
     data = request.json
     req_id = str(uuid.uuid4())
@@ -959,24 +972,6 @@ def get_requirements():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/requirements/<req_id>', methods=['DELETE'])
-@require_api_key
-def delete_requirement(req_id):
-    """Delete a requirement and its skill relationships from Neo4j."""
-    try:
-        with driver.session() as session:
-            result = session.run(
-                "MATCH (r:Requirement {id: $id}) DETACH DELETE r RETURN count(r) as count",
-                id=req_id
-            )
-            count = result.single()["count"]
-        if count == 0:
-            return jsonify({"success": False, "error": "Requirement not found"}), 404
-        return jsonify({"success": True, "message": "Requirement deleted"}), 200
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
 @app.route('/api/candidates', methods=['GET'])
 def get_candidates():
     try:
@@ -1029,7 +1024,6 @@ def get_candidates():
 
 
 @app.route('/api/candidates/<candidate_id>', methods=['DELETE'])
-@require_api_key
 def delete_candidate(candidate_id):
     """Delete a candidate and all their relationships from Neo4j."""
     print(f"  Deleting Candidate: {candidate_id}")
