@@ -1,19 +1,9 @@
+import { API_URL, getHeaders } from '../config';
+
 /**
  * Store for recruiter requirements (Job Descriptions).
  * Used to match candidates against specific criteria.
  */
-
-const SEED_REQUIREMENTS = [
-  {
-    id: 'req-1',
-    title: 'Senior Full Stack Engineer',
-    role: 'Full Stack Engineer',
-    skills: ['React', 'Node.js', 'Neo4j', 'TypeScript', 'AWS'],
-    minExperience: 5,
-    description: 'We are looking for a Senior Full Stack Engineer to lead our core platform team. Experience with graph databases is a plus.',
-    addedAt: new Date().toLocaleTimeString(),
-  }
-];
 
 let _requirements = [];
 const _listeners = new Set();
@@ -22,9 +12,9 @@ export const requirementsStore = {
   getAll: () => _requirements,
   add: async (req) => {
     try {
-      const res = await fetch('http://localhost:5000/api/requirements', {
+      const res = await fetch(`${API_URL}/api/requirements`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(req)
       });
       const data = await res.json();
@@ -42,11 +32,22 @@ export const requirementsStore = {
     _requirements = _requirements.filter(r => r.id !== id);
     _listeners.forEach(fn => fn());
     
-    // In a real app, you'd add DELETE /api/requirements/<id>
+    try {
+      const res = await fetch(`${API_URL}/api/requirements/${id}`, { 
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (!data.success) {
+        console.error("Failed to delete requirement from server:", data.error);
+      }
+    } catch (err) {
+      console.error("Network error while deleting requirement:", err);
+    }
   },
   fetchFromBackend: async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/requirements');
+      const res = await fetch(`${API_URL}/api/requirements`, { headers: getHeaders() });
       const data = await res.json();
       if (data.success) {
         _requirements = data.data;

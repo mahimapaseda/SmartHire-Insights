@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, FileCheck2, CalendarClock, Database, TrendingUp } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
+import { API_URL, getHeaders } from '../config';
 
 const ACTIVITY_PLACEHOLDER = [
   { name: 'Software Engineer CV',   status: 'Completed',  time: '2 min ago',  role: 'Full Stack' },
@@ -24,8 +25,18 @@ const STATUS_META = {
 
 const Overview = ({ onIngest }) => {
   const [candidates, setCandidates] = useState(candidateStore.getAll());
+  const [reqCount, setReqCount] = useState(0);
 
   useEffect(() => {
+    // Fetch requirements count
+    const fetchReqs = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/requirements`, { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) setReqCount(data.data.length);
+      } catch (err) { console.error(err); }
+    };
+    fetchReqs();
     return candidateStore.subscribe(() => setCandidates([...candidateStore.getAll()]));
   }, []);
 
@@ -39,10 +50,10 @@ const Overview = ({ onIngest }) => {
   })) : ACTIVITY_PLACEHOLDER;
 
   const STATS = [
-    { label: 'Parsed CVs',        value: String(candidateCount), delta: 'Increased from last month', icon: FileCheck2,    featured: true },
-    { label: 'Active Interviews', value: '14',                   delta: 'Increased from last month', icon: CalendarClock, featured: false },
-    { label: 'Neo4j Nodes',       value: String(candidateCount * 6 + 1200), delta: 'Increased from last month', icon: Database, featured: false },
-    { label: 'Match Rate',        value: '94%',                  delta: 'On target',                 icon: TrendingUp,    featured: false },
+    { label: 'Parsed CVs',        value: String(candidateCount), delta: 'Total extracted pool', icon: FileCheck2,    featured: true },
+    { label: 'Active Requirements', value: String(reqCount),      delta: 'Targeted roles',        icon: CalendarClock, featured: false },
+    { label: 'Neo4j Entities',    value: String(candidateCount * 6 + reqCount * 3), delta: 'Graph nodes', icon: Database, featured: false },
+    { label: 'System Health',     value: '99%',                  delta: 'All services up',       icon: TrendingUp,    featured: false },
   ];
 
   return (

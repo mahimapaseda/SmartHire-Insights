@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_URL, getHeaders } from '../config';
 import {
   Mic, MicOff, Upload, Play, Square,
   RefreshCcw, Volume2, AlertTriangle,
@@ -120,7 +121,10 @@ const VoiceAnalysis = ({ candidate }) => {
   const runAnalysis = async () => {
     setStatus('analysing');
     try {
-      const res = await fetch('http://localhost:5000/api/voice-analysis', { method: 'POST' });
+        const res = await fetch(`${API_URL}/api/voice-analysis`, { 
+          method: 'POST',
+          headers: getHeaders()
+        });
       if (res.ok) {
         const data = await res.json();
         setResult(data.data);
@@ -138,7 +142,10 @@ const VoiceAnalysis = ({ candidate }) => {
       setRecording(false);
       setStatus('analysing');
       try {
-        const res = await fetch('http://localhost:5000/api/voice-analysis', { method: 'POST' });
+        const res = await fetch(`${API_URL}/api/voice-analysis`, { 
+          method: 'POST',
+          headers: getHeaders()
+        });
         if (res.ok) {
           const data = await res.json();
           setResult(data.data);

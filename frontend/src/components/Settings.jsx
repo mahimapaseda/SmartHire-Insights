@@ -6,6 +6,7 @@ import {
   Trash2, Download, Upload, AlertTriangle,
 } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
+import { API_URL, getHeaders } from '../config';
 
 /* ── Section wrapper ──────────────────────────────────────────── */
 const Section = ({ title, subtitle, children }) => (
@@ -69,7 +70,7 @@ const Settings = () => {
   const pingBackend = async () => {
     setBackendStatus('checking');
     try {
-      const res = await fetch('http://localhost:5000/api/ping');
+      const res = await fetch(`${API_URL}/api/ping`, { headers: getHeaders() });
       setBackendStatus(res.ok ? 'online' : 'offline');
     } catch {
       setBackendStatus('offline');
@@ -79,7 +80,7 @@ const Settings = () => {
   const testNeo4j = async () => {
     setNeo4jStatus('checking');
     try {
-      const res = await fetch('http://localhost:5000/api/neo4j-status');
+      const res = await fetch(`${API_URL}/api/neo4j-status`, { headers: getHeaders() });
       setNeo4jStatus(res.ok ? 'online' : 'offline');
     } catch {
       setNeo4jStatus('offline');
@@ -89,7 +90,10 @@ const Settings = () => {
   const resetGraph = async () => {
     if (!window.confirm('Delete all nodes and relationships? This is irreversible.')) return;
     try {
-      const res = await fetch('http://localhost:5000/api/reset-graph', { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/api/reset-graph`, { 
+        method: 'DELETE',
+        headers: getHeaders()
+      });
       if (res.ok) {
         alert('Graph reset successfully.');
         candidateStore.fetchFromNeo4j();
@@ -137,7 +141,7 @@ const Settings = () => {
   const [neo4jUser,    setNeo4jUser]    = useState(getSaved('neo4jUser', 'neo4j'));
   const [neo4jPw,      setNeo4jPw]      = useState('');
   const [showNeo4jPw,  setShowNeo4jPw]  = useState(false);
-  const [backendUrl,   setBackendUrl]   = useState(getSaved('backendUrl', 'http://localhost:5000'));
+  const [backendUrl,   setBackendUrl]   = useState(getSaved('backendUrl', API_URL));
 
   /* Appearance */
   const [accentColor,  setAccentColor]  = useState(getSaved('accentColor', '#1a5c38'));

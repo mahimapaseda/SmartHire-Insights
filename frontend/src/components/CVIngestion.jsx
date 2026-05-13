@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { candidateStore, extractFromFile } from '../utils/candidateStore';
 import { notificationStore, NOTIF_TYPES } from '../utils/notificationStore';
+import { API_URL, getHeaders } from '../config';
 
 const ACCEPTED = [
   'application/pdf',
@@ -57,8 +58,11 @@ const CVIngestion = () => {
       const formData = new FormData();
       formData.append('file', fileObj.file);
 
-      fetch('http://localhost:5000/api/upload', {
+      fetch(`${API_URL}/api/upload`, {
         method: 'POST',
+        headers: getHeaders(true), // Passing true to indicate multipart if needed, though getHeaders currently doesn't handle it. 
+        // Actually fetch with FormData doesn't need Content-Type header manually set.
+        // So we just need the API key.
         body: formData,
       })
       .then(res => res.json())

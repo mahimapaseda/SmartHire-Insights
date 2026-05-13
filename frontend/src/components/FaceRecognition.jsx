@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_URL, getHeaders } from '../config';
 import {
   Camera, Upload, Play, Square, RefreshCcw,
   Smile, Frown, Meh, AlertTriangle, CheckCircle2,
@@ -103,7 +104,10 @@ const FaceRecognition = ({ candidate }) => {
   const runAnalysis = async () => {
     setStatus('analysing');
     try {
-      const res = await fetch('http://localhost:5000/api/face-analysis', { method: 'POST' });
+        const res = await fetch(`${API_URL}/api/face-analysis`, { 
+          method: 'POST',
+          headers: getHeaders()
+        });
       if (res.ok) {
         const data = await res.json();
         setResult(data.data);
@@ -121,7 +125,10 @@ const FaceRecognition = ({ candidate }) => {
       setLiveActive(false);
       setStatus('analysing');
       try {
-        const res = await fetch('http://localhost:5000/api/face-analysis', { method: 'POST' });
+        const res = await fetch(`${API_URL}/api/face-analysis`, { 
+          method: 'POST',
+          headers: getHeaders()
+        });
         if (res.ok) {
           const data = await res.json();
           setResult(data.data);

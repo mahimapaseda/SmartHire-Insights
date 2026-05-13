@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Users, Brain, Share2, CheckCircle2 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
-const DEMO_EMAIL = 'mahima@smarthire.ai';
-const DEMO_KEY   = 'admin123';
+import { DEMO_CREDENTIALS } from '../config';
 
 /* ── Logo mark ─────────────────────────────────────────────── */
 const LogoMark = ({ size = 40, dark = false }) => (
@@ -73,7 +72,7 @@ const Login = () => {
     setError('');
     setLoading(true);
     setTimeout(() => {
-      if (email === DEMO_EMAIL && password === DEMO_KEY) {
+      if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.key) {
         sessionStorage.setItem('sh_auth', '1');
         navigate('/dashboard');
       } else {
@@ -359,17 +358,17 @@ const Login = () => {
                 <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
                   <p>
                     <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Email  </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{DEMO_EMAIL}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{DEMO_CREDENTIALS.email}</span>
                   </p>
                   <p>
                     <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>Key  </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{DEMO_KEY}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>{DEMO_CREDENTIALS.key}</span>
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => { setEmail(DEMO_EMAIL); setPassword(DEMO_KEY); setError(''); }}
+                onClick={() => { setEmail(DEMO_CREDENTIALS.email); setPassword(DEMO_CREDENTIALS.key); setError(''); }}
                 style={{
                   flexShrink: 0,
                   padding: '0.45rem 0.875rem',

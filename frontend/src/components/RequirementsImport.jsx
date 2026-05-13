@@ -5,6 +5,7 @@ import {
   ClipboardList, AlertCircle
 } from 'lucide-react';
 import { requirementsStore } from '../utils/requirementsStore';
+import { API_URL, getHeaders } from '../config';
 
 const SKILL_SUGGESTIONS = [
   'React', 'Node.js', 'Python', 'AWS', 'Neo4j', 'PostgreSQL', 
@@ -37,9 +38,9 @@ const RequirementsImport = ({ onComplete }) => {
     setStep('extracting');
     
     try {
-      const res = await fetch('http://localhost:5000/api/requirements', {
+      const res = await fetch(`${API_URL}/api/requirements`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ text: inputText, title: titleHint })
       });
       const data = await res.json();
