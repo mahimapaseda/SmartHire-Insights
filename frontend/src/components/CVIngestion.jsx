@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { candidateStore, extractFromFile } from '../utils/candidateStore';
 import { notificationStore, NOTIF_TYPES } from '../utils/notificationStore';
+import apiFetch from '../utils/api';
 
 const ACCEPTED = [
   'application/pdf',
@@ -57,8 +58,10 @@ const CVIngestion = () => {
       const formData = new FormData();
       formData.append('file', fileObj.file);
 
-      fetch('http://localhost:5000/api/upload', {
+      const API_KEY = import.meta.env.VITE_API_KEY || 'dev-secret-key-change-in-production';
+      fetch('/api/upload', {
         method: 'POST',
+        headers: { 'X-API-Key': API_KEY },
         body: formData,
       })
       .then(res => res.json())

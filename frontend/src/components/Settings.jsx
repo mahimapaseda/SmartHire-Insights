@@ -6,6 +6,7 @@ import {
   Trash2, Download, Upload, AlertTriangle,
 } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
+import apiFetch from '../utils/api';
 
 /* ── Section wrapper ──────────────────────────────────────────── */
 const Section = ({ title, subtitle, children }) => (
@@ -69,8 +70,8 @@ const Settings = () => {
   const pingBackend = async () => {
     setBackendStatus('checking');
     try {
-      const res = await fetch('http://localhost:5000/api/ping');
-      setBackendStatus(res.ok ? 'online' : 'offline');
+      await apiFetch('/api/ping');
+      setBackendStatus('online');
     } catch {
       setBackendStatus('offline');
     }
@@ -79,8 +80,8 @@ const Settings = () => {
   const testNeo4j = async () => {
     setNeo4jStatus('checking');
     try {
-      const res = await fetch('http://localhost:5000/api/neo4j-status');
-      setNeo4jStatus(res.ok ? 'online' : 'offline');
+      await apiFetch('/api/neo4j-status');
+      setNeo4jStatus('online');
     } catch {
       setNeo4jStatus('offline');
     }
@@ -89,15 +90,11 @@ const Settings = () => {
   const resetGraph = async () => {
     if (!window.confirm('Delete all nodes and relationships? This is irreversible.')) return;
     try {
-      const res = await fetch('http://localhost:5000/api/reset-graph', { method: 'DELETE' });
-      if (res.ok) {
-        alert('Graph reset successfully.');
-        candidateStore.fetchFromNeo4j();
-      } else {
-        alert('Failed to reset graph.');
-      }
-    } catch {
-      alert('Network error while resetting graph.');
+      await apiFetch('/api/reset-graph', { method: 'DELETE' });
+      alert('Graph reset successfully.');
+      candidateStore.fetchFromNeo4j();
+    } catch (err) {
+      alert(`Failed to reset graph: ${err.message}`);
     }
   };
 
