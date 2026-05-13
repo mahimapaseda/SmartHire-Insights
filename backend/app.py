@@ -156,13 +156,16 @@ def extract_phone(text):
 
 def extract_name(text):
 
-    lines    = text.split('\n')
-    combined = " ".join(lines[:10])
+    # Filter out empty lines to avoid wasting the initial line checks
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    # Increase the search space slightly
+    combined = " ".join(lines[:15])
     doc      = nlp(combined)
 
     blacklist = [
         "curriculum vitae", "resume", "cv", "reference",
-        "profile", "summary", "objective"
+        "profile", "summary", "objective", "personal details", "name"
     ]
 
     for ent in doc.ents:
@@ -172,17 +175,17 @@ def extract_name(text):
                 if 1 < len(candidate_name.split()) <= 5:
                     return candidate_name
 
+    # Fallback: check the first few valid lines
     for line in lines[:5]:
-        line = line.strip()
         if (
-            line
-            and len(line.split()) <= 5
+            len(line.split()) <= 5
             and not any(kw in line.lower() for kw in blacklist)
             and not re.search(r'[@\d]', line)
         ):
             return line
 
-    return "Not Found"
+    # If all fails, return a default string rather than completely breaking
+    return "Unknown Candidate"
 
 
 # =========================================================
