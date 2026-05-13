@@ -208,29 +208,6 @@ def extract_phone(text):
 
 
 # =========================================================
-# SKILLS DATABASE
-# =========================================================
-
-skills_database = [
-    "Python", "Java", "C", "C++", "C#", "Ruby", "Go", "Rust", "Swift",
-    "Kotlin", "PHP", "R", "MATLAB", "Scala", "Perl",
-    "SQL", "MySQL", "PostgreSQL", "MongoDB", "SQLite", "Oracle", "Redis",
-    "Machine Learning", "Deep Learning", "NLP", "Computer Vision",
-    "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "OpenCV",
-    "Data Analysis", "Data Science", "Statistics", "Data Visualization",
-    "React", "Angular", "Vue", "JavaScript", "TypeScript", "Node.js",
-    "HTML", "CSS", "Bootstrap", "Tailwind", "Next.js",
-    "Django", "Flask", "FastAPI", "Spring Boot", "Express",
-    "AWS", "Azure", "Google Cloud", "Cloud Computing", "Docker", "Kubernetes",
-    "Git", "Linux", "Bash", "Agile", "Scrum", "DevOps", "CI/CD",
-    "Streamlit", "Power BI", "Tableau", "Excel",
-    "Artificial Intelligence", "Neo4j", "Spark", "Hadoop",
-    "Selenium", "Postman", "QA", "Manual Testing", "Automation Testing", 
-    "Jira", "SDLC", "STLC", "Software Testing", "Bug Tracking", "Cucumber"
-]
-
-
-# =========================================================
 # EXTRACT CANDIDATE NAME
 # =========================================================
 
@@ -251,11 +228,9 @@ def extract_name(text):
     for ent in doc.ents:
         if ent.label_ == "PERSON":
             candidate_name = ent.text.strip()
-            # Clean up potential artifacts
-            candidate_name = re.sub(r'[^a-zA-Z\s]', '', candidate_name)
-            if candidate_name.lower() not in blacklist and candidate_name not in skills_database:
-                if 1 < len(candidate_name.split()) <= 4:
-                    return candidate_name.title()
+            if candidate_name.lower() not in blacklist:
+                if 1 < len(candidate_name.split()) <= 5:
+                    return candidate_name
 
     # Fallback: check the first few valid lines
     for line in lines[:5]:
@@ -267,15 +242,30 @@ def extract_name(text):
             return line
 
     # If all fails, return a default string rather than completely breaking
-    # If all fails, return 'Not Found' to trigger rejection
-    return "Not Found"
+    return "Unknown Candidate"
 
 
 # =========================================================
 # SKILLS DATABASE
 # =========================================================
 
-# (skills_database moved up)
+skills_database = [
+    "Python", "Java", "C", "C++", "C#", "Ruby", "Go", "Rust", "Swift",
+    "Kotlin", "PHP", "R", "MATLAB", "Scala", "Perl",
+    "SQL", "MySQL", "PostgreSQL", "MongoDB", "SQLite", "Oracle", "Redis",
+    "Machine Learning", "Deep Learning", "NLP", "Computer Vision",
+    "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "OpenCV",
+    "Data Analysis", "Data Science", "Statistics", "Data Visualization",
+    "React", "Angular", "Vue", "JavaScript", "TypeScript", "Node.js",
+    "HTML", "CSS", "Bootstrap", "Tailwind", "Next.js",
+    "Django", "Flask", "FastAPI", "Spring Boot", "Express",
+    "AWS", "Azure", "Google Cloud", "Cloud Computing", "Docker", "Kubernetes",
+    "Git", "Linux", "Bash", "Agile", "Scrum", "DevOps", "CI/CD",
+    "Streamlit", "Power BI", "Tableau", "Excel",
+    "Artificial Intelligence", "Neo4j", "Spark", "Hadoop",
+    "Selenium", "Postman", "QA", "Manual Testing", "Automation Testing", 
+    "Jira", "SDLC", "STLC", "Software Testing", "Bug Tracking", "Cucumber"
+]
 
 
 # =========================================================
@@ -602,7 +592,7 @@ def generate_summary(name, skills, education, experience):
 # =========================================================
 
 def store_candidate_in_neo4j(candidate_id, name, email, phone,
-                              skills, education, experience, match_score, source):
+                              skills, education, experience, match_score):
 
     print()
     print("=" * 55)
@@ -633,11 +623,8 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
                 SET   c.name = $name,
                       c.email = $email,
                       c.phone = $phone,
-                      c.match_score = $match_score,
-                      c.source = $source,
-                      c.addedAt = datetime()
-            """, id=candidate_id, name=name, email=email, phone=phone, 
-                 match_score=match_score, source=source)
+                      c.match_score = $match_score
+            """, id=candidate_id, name=name, email=email, phone=phone, match_score=match_score)
 
             print(f"        Candidate node created  ->  name='{name}'")
 
@@ -851,7 +838,7 @@ def upload_cv():
 
         # 4. Save to Neo4j
         neo4j_ok = store_candidate_in_neo4j(
-            candidate_id, name, email, phone, skills, education, experience, match_score, uploaded_file.filename
+            candidate_id, name, email, phone, skills, education, experience, match_score
         )
 
         # 5. Return JSON to React
