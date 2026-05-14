@@ -139,13 +139,7 @@ const ResultAnalysis = () => {
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Result Analysis</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Combined CV, emotion, and voice stress scores · {results.length} candidate{results.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Sort:</span>
           {[['overall','Overall'],['cvScore','CV Score'],['name','Name']].map(([k, l]) => (

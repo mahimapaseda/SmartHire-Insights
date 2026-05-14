@@ -46,10 +46,9 @@ const Candidates = ({ onSelectCandidate }) => {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Candidate Pool</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            {candidates.length} profiles · {filtered.length} shown · AI-ranked by match score
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <p style={{ fontSize: '0.81rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+            {candidates.length} profiles · {filtered.length} shown
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>

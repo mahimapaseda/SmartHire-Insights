@@ -140,13 +140,7 @@ const CVIngestion = () => {
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>CV Ingestion</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Upload multiple resumes — the NLP engine extracts and profiles each candidate automatically.
-          </p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         {files.length > 0 && (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span className="badge badge-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>

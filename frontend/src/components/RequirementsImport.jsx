@@ -67,15 +67,7 @@ const RequirementsImport = ({ onComplete }) => {
   return (
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Recruiter Requirements</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Define what you are looking for. Our AI matches candidates against these requirements.
-          </p>
-        </div>
-      </div>
+
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem' }}>
         

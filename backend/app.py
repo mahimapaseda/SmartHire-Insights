@@ -836,6 +836,19 @@ def upload_cv():
         phone      = extract_phone(extracted_text)
         skills     = extract_skills(extracted_text)
 
+        # Check for existing candidate by email to prevent duplicates
+        if email != "Not Found":
+            try:
+                with driver.session() as session:
+                    result = session.run("MATCH (c:Candidate {email: $email}) RETURN c.id as id", email=email)
+                    record = result.single()
+                    if record:
+                        existing_id = record["id"]
+                        print(f"  [DEDUPE] Found existing candidate with email {email}. Reusing ID: {existing_id}")
+                        candidate_id = existing_id
+            except Exception as e:
+                print(f"  [WARN] Failed to check for existing candidate: {str(e)}")
+
         education = extract_education(
             education_section if education_section.strip() else extracted_text
         )

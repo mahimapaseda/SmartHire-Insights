@@ -12,8 +12,28 @@ const _listeners = new Set();
 
 export const candidateStore = {
   getAll:  ()  => _candidates,
-  add:     (c) => { _candidates = [..._candidates, c]; _listeners.forEach(fn => fn()); },
-  addMany: (cs)=> { _candidates = [..._candidates, ...cs]; _listeners.forEach(fn => fn()); },
+  add: (c) => { 
+    const idx = _candidates.findIndex(item => item.id === c.id);
+    if (idx > -1) {
+      _candidates[idx] = { ..._candidates[idx], ...c };
+      _candidates = [..._candidates];
+    } else {
+      _candidates = [..._candidates, c];
+    }
+    _listeners.forEach(fn => fn()); 
+  },
+  addMany: (cs) => { 
+    cs.forEach(c => {
+      const idx = _candidates.findIndex(item => item.id === c.id);
+      if (idx > -1) {
+        _candidates[idx] = { ..._candidates[idx], ...c };
+      } else {
+        _candidates.push(c);
+      }
+    });
+    _candidates = [..._candidates];
+    _listeners.forEach(fn => fn()); 
+  },
   remove:  async (id)=> { 
     // UI optimistic update
     _candidates = _candidates.filter(c => c.id !== id); 

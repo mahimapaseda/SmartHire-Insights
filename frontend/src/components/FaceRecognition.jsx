@@ -159,14 +159,7 @@ const FaceRecognition = ({ candidate }) => {
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Facial Emotion Recognition</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            {candidate ? `Analysing ${candidate.name} · ` : ''}
-            API-based emotion detection from interview footage.
-          </p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <ModeTab label="Upload Image" active={mode === 'upload'} onClick={() => { setMode('upload'); reset(); }} />
           <ModeTab label="Live Camera"  active={mode === 'live'}   onClick={() => { setMode('live');   reset(); }} />

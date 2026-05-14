@@ -28,13 +28,7 @@ const Notifications = () => {
     <div className="animate-fade-up" style={{ maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.2rem' }}>Activity Feed</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Real-time updates from AI parsing and backend services.
-          </p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         {items.length > 0 && (
           <button className="btn-ghost" onClick={clearAll} style={{ fontSize: '0.8rem' }}>
             <Trash2 size={13} /> Clear all
