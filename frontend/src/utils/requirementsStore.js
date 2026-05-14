@@ -2,61 +2,120 @@ import { API_URL, getHeaders } from '../config';
 
 /**
  * Store for recruiter requirements (Job Descriptions).
- * Used to match candidates against specific criteria.
+ * Full CRUD: create, read, update, delete — synced with Neo4j via backend.
  */
 
 let _requirements = [];
-const _listeners = new Set();
+let _error        = null;
+const _listeners  = new Set();
+
+const _notify = () => _listeners.forEach(fn => fn());
 
 export const requirementsStore = {
-  getAll: () => _requirements,
+  getAll:   () => _requirements,
+  getError: () => _error,
+
+  /** CREATE — POST /api/requirements */
   add: async (req) => {
     try {
-      const res = await fetch(`${API_URL}/api/requirements`, {
-        method: 'POST',
+      const res  = await fetch(`${API_URL}/api/requirements`, {
+        method:  'POST',
         headers: getHeaders(),
-        body: JSON.stringify(req)
+        body:    JSON.stringify(req),
       });
       const data = await res.json();
       if (data.success) {
         _requirements = [data.data, ..._requirements];
-        _listeners.forEach(fn => fn());
+        _notify();
         return data.data;
+      } else {
+        throw new Error(data.error || 'Failed to save requirement');
       }
     } catch (err) {
-      console.error("Failed to add requirement:", err);
+      _error = err.message;
+      console.error('Failed to add requirement:', err);
+      _notify();
     }
   },
-  remove: async (id) => {
-    // UI optimistic update
-    _requirements = _requirements.filter(r => r.id !== id);
-    _listeners.forEach(fn => fn());
-    
+
+  /** UPDATE — PUT /api/requirements/:id */
+  update: async (id, updates) => {
+    const backup = [..._requirements];
+    // Optimistic update in UI
+    _requirements = _requirements.map(r => r.id === id ? { ...r, ...updates } : r);
+    _notify();
     try {
-      const res = await fetch(`${API_URL}/api/requirements/${id}`, { 
-        method: 'DELETE',
-        headers: getHeaders()
+      const res  = await fetch(`${API_URL}/api/requirements/${id}`, {
+        method:  'PUT',
+        headers: getHeaders(),
+        body:    JSON.stringify(updates),
       });
       const data = await res.json();
       if (!data.success) {
-        console.error("Failed to delete requirement from server:", data.error);
+        _requirements = backup;   // rollback
+        _error = data.error || 'Update failed';
+        _notify();
+        throw new Error(_error);
       }
+      // Reconcile with server response
+      _requirements = _requirements.map(r => r.id === id ? { ...r, ...data.data } : r);
+      _notify();
+      return data.data;
     } catch (err) {
-      console.error("Network error while deleting requirement:", err);
+      _requirements = backup;
+      _error = err.message;
+      console.error('Failed to update requirement:', err);
+      _notify();
     }
   },
-  fetchFromBackend: async () => {
+
+  /** DELETE — DELETE /api/requirements/:id */
+  remove: async (id) => {
+    const backup = [..._requirements];
+    _requirements = _requirements.filter(r => r.id !== id);
+    _notify();
     try {
-      const res = await fetch(`${API_URL}/api/requirements`, { headers: getHeaders() });
+      const res  = await fetch(`${API_URL}/api/requirements/${id}`, {
+        method:  'DELETE',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        _requirements = backup;   // rollback
+        _error = data.error || 'Delete failed';
+        console.error('Failed to delete requirement:', data.error);
+        _notify();
+      }
+    } catch (err) {
+      _requirements = backup;
+      _error = err.message;
+      console.error('Network error while deleting requirement:', err);
+      _notify();
+    }
+  },
+
+  /** READ ALL — GET /api/requirements */
+  fetchFromBackend: async () => {
+    _error = null;
+    try {
+      const res  = await fetch(`${API_URL}/api/requirements`, { headers: getHeaders() });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const data = await res.json();
       if (data.success) {
         _requirements = data.data;
-        _listeners.forEach(fn => fn());
+        _notify();
+      } else {
+        throw new Error(data.error || 'Fetch failed');
       }
     } catch (err) {
-      console.error("Failed to fetch requirements:", err);
+      _error = err.message;
+      console.error('Failed to fetch requirements:', err);
+      _notify();
     }
   },
+
+  clearError: () => { _error = null; _notify(); },
+
   subscribe: (fn) => {
     _listeners.add(fn);
     return () => _listeners.delete(fn);
