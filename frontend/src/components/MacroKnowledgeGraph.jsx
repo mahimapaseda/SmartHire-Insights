@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { Search, Filter, Users, Layers, Zap, X, Plus, RefreshCcw } from 'lucide-react';
-import { generateMacroData } from '../utils/mockGraphData';
+import { generateMacroData } from '../utils/graphDataUtils';
 import { candidateStore } from '../utils/candidateStore';
 
 const MacroKnowledgeGraph = () => {

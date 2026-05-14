@@ -4,7 +4,7 @@ import {
   ArrowLeft, CheckCircle2, RefreshCcw, FileText,
   Briefcase, GraduationCap, Mail, MapPin, X, Info,
 } from 'lucide-react';
-import { generateCandidateData } from '../utils/mockGraphData';
+import { generateCandidateData } from '../utils/graphDataUtils';
 
 const CandidateDeepDive = ({ candidate, onBack }) => {
   const [selectedNode, setSelectedNode] = useState(null);
