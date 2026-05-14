@@ -16,12 +16,21 @@ const MAX_MB = 10;
 
 /* ══════════════════════════════════════════════════════════════
    CV INGESTION — multi-file with per-CV extracted profile
-══════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */import { ingestionStore } from '../utils/ingestionStore';
+
 const CVIngestion = () => {
   const [dragging, setDragging] = useState(false);
-  const [files,    setFiles]    = useState([]);   // { id, file, status, progress, profile }
-  const [parsing,  setParsing]  = useState(false);
-  const [expanded, setExpanded] = useState(null); // id of expanded profile card
+  const [files,    setFiles]    = useState(ingestionStore.getFiles());
+  const [parsing,  setParsing]  = useState(ingestionStore.isParsing());
+  const [expanded, setExpanded] = useState(null);
+
+  React.useEffect(() => {
+    const unsub = ingestionStore.subscribe(() => {
+      setFiles(ingestionStore.getFiles());
+      setParsing(ingestionStore.isParsing());
+    });
+    return unsub;
+  }, []);
 
   /* ── Add files ── */
   const addFiles = useCallback((incoming) => {
@@ -31,18 +40,18 @@ const CVIngestion = () => {
     if (valid.length < incoming.length) {
       console.warn('Some files skipped — wrong type or too large.');
     }
-    setFiles(prev => [...prev, ...valid]);
+    ingestionStore.addFiles(valid);
   }, []);
 
   const onDrop  = (e) => { e.preventDefault(); setDragging(false); addFiles(Array.from(e.dataTransfer.files)); };
   const onInput = (e) => addFiles(Array.from(e.target.files));
-  const remove  = (id) => setFiles(prev => prev.filter(f => f.id !== id));
+  const remove  = (id) => ingestionStore.removeFile(id);
 
   /* ── Parse all queued ── */
   const startParsing = () => {
     const queued = files.filter(f => f.status === 'queued');
     if (!queued.length) return;
-    setParsing(true);
+    ingestionStore.setParsing(true);
     let done = 0;
 
     queued.forEach((fileObj) => {
@@ -50,9 +59,7 @@ const CVIngestion = () => {
       const tick = setInterval(() => {
         progress = Math.min(95, progress + Math.random() * 15 + 5);
         const pct = Math.floor(progress);
-        setFiles(prev => prev.map(f =>
-          f.id === fileObj.id ? { ...f, status: 'parsing', progress: pct } : f
-        ));
+        ingestionStore.updateFile(fileObj.id, { status: 'parsing', progress: pct });
       }, 400);
 
       const formData = new FormData();
@@ -72,9 +79,7 @@ const CVIngestion = () => {
           const d = data.data;
           
           if (!data.neo4j_saved) {
-            setFiles(prev => prev.map(f =>
-              f.id === fileObj.id ? { ...f, status: 'error', progress: 100, errorMsg: 'NLP failed to extract candidate name. Not saved.' } : f
-            ));
+            ingestionStore.updateFile(fileObj.id, { status: 'error', progress: 100, errorMsg: 'NLP failed to extract candidate name. Not saved.' });
             notificationStore.add(NOTIF_TYPES.ERROR, 'Parsing Rejected', `Failed to extract name from ${fileObj.file.name}. Not saved to DB.`);
           } else {
             const initials = d.name && d.name !== "Not Found" ? d.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'CV';
@@ -97,9 +102,7 @@ const CVIngestion = () => {
               addedAt: new Date().toLocaleTimeString(),
             };
             
-            setFiles(prev => prev.map(f =>
-              f.id === fileObj.id ? { ...f, status: 'completed', progress: 100, profile } : f
-            ));
+            ingestionStore.updateFile(fileObj.id, { status: 'completed', progress: 100, profile });
             candidateStore.add(profile);
             
             notificationStore.add(NOTIF_TYPES.PARSE, 'CV Parsing Complete', `${profile.name}'s profile is now available in the intelligence pool.`);
@@ -109,28 +112,24 @@ const CVIngestion = () => {
             }
           }
         } else {
-          setFiles(prev => prev.map(f =>
-            f.id === fileObj.id ? { ...f, status: 'error', progress: 0, errorMsg: data.error || 'Server error' } : f
-          ));
+          ingestionStore.updateFile(fileObj.id, { status: 'error', progress: 0, errorMsg: data.error || 'Server error' });
           notificationStore.add(NOTIF_TYPES.ERROR, 'Processing Error', `Server failed to process ${fileObj.file.name}.`);
         }
       })
       .catch(err => {
         clearInterval(tick);
         console.error("Upload error:", err);
-        setFiles(prev => prev.map(f =>
-          f.id === fileObj.id ? { ...f, status: 'error', progress: 0, errorMsg: 'Network error' } : f
-        ));
+        ingestionStore.updateFile(fileObj.id, { status: 'error', progress: 0, errorMsg: 'Network error' });
         notificationStore.add(NOTIF_TYPES.ERROR, 'Network Error', `Could not connect to the backend server.`);
       })
       .finally(() => {
         done++;
-        if (done === queued.length) setParsing(false);
+        if (done === queued.length) ingestionStore.setParsing(false);
       });
     });
   };
 
-  const clearDone = () => setFiles(prev => prev.filter(f => f.status !== 'completed'));
+  const clearDone = () => ingestionStore.clearDone();
 
   const allDone  = files.length > 0 && files.every(f => f.status === 'completed');
   const hasQueue = files.some(f => f.status === 'queued');
