@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Overview from '../components/Overview';
@@ -34,7 +34,10 @@ const PAGE_TITLES = {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+
+  // M-2: Derive active tab from URL path (e.g. /dashboard/candidates)
+  const activeTab = location.pathname.split('/')[2] || 'dashboard';
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -70,11 +73,11 @@ const Dashboard = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const goTo = (tab) => {
-    setActiveTab(tab);
+  const goTo = (tabId) => {
+    navigate(`/dashboard/${tabId}`);
     setSidebarOpen(false);
     setSelectedCandidate(null);
-    if (tab === 'notifications') {
+    if (tabId === 'notifications') {
       notificationStore.markAllRead();
     }
   };

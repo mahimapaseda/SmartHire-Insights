@@ -16,8 +16,8 @@ const Logo = () => (
 
 const MENU_NAV = [
   { id: 'dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
-  { id: 'upload',        label: 'CV Ingestion', icon: FileUp },
   { id: 'requirements',  label: 'Requirements', icon: ClipboardList },
+  { id: 'upload',        label: 'CV Ingestion', icon: FileUp },
   { id: 'candidates',    label: 'Candidates',   icon: Users },
   { id: 'notifications', label: 'Notifications',icon: Bell },
 ];
