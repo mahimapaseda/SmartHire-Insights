@@ -4,7 +4,7 @@ import {
   Loader2, ChevronDown, ChevronUp, User, Briefcase,
   MapPin, GraduationCap,
 } from 'lucide-react';
-import { candidateStore, extractFromFile } from '../utils/candidateStore';
+import { candidateStore } from '../utils/candidateStore';
 import { notificationStore, NOTIF_TYPES } from '../utils/notificationStore';
 import { API_URL, getHeaders } from '../config';
 
