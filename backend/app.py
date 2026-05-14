@@ -770,7 +770,19 @@ def reset_graph():
     try:
         with driver.session() as session:
             session.run("MATCH (n) DETACH DELETE n")
-        return jsonify({"success": True, "message": "Graph reset successfully"}), 200
+            
+        # Also clear the uploads folder
+        upload_dir = "uploads"
+        if os.path.exists(upload_dir):
+            for filename in os.listdir(upload_dir):
+                file_path = os.path.join(upload_dir, filename)
+                try:
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                except Exception as fe:
+                    print(f"  Failed to delete file {file_path}: {str(fe)}")
+                    
+        return jsonify({"success": True, "message": "Graph and uploads reset successfully"}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1050,7 +1062,18 @@ def delete_candidate(candidate_id):
         if count == 0:
             return jsonify({"success": False, "error": "Candidate not found"}), 404
             
-        return jsonify({"success": True, "message": "Candidate deleted successfully"}), 200
+        # Also remove the associated physical file from /uploads
+        upload_dir = "uploads"
+        for ext in [".pdf", ".docx"]:
+            file_path = os.path.join(upload_dir, f"{candidate_id}{ext}")
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    print(f"  Deleted associated file: {file_path}")
+                except Exception as fe:
+                    print(f"  Failed to delete file {file_path}: {str(fe)}")
+            
+        return jsonify({"success": True, "message": "Candidate and associated file deleted successfully"}), 200
     except Exception as e:
         print(f"  Delete Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
