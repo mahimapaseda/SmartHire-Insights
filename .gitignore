@@ -1,0 +1,29 @@
+# Environment secrets — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node / Vite
+node_modules/
+frontend/dist/
+frontend/.env
+*.log
+
+# Uploads (user data)
+backend/uploads/
+
+# Editor
+.vscode/settings.json
+*.swp
+.DS_Store
+Thumbs.db

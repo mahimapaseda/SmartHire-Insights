@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Mail, Bell, Menu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import NotificationDropdown from './NotificationDropdown';
+import { notificationStore } from '../utils/notificationStore';
 
 const Header = ({ setSidebarOpen, notifOpen, setNotifOpen, notifRef, goTo }) => {
+  const [unreadCount, setUnreadCount] = useState(notificationStore.getUnreadCount());
+
+  useEffect(() => {
+    return notificationStore.subscribe(() => {
+      setUnreadCount(notificationStore.getUnreadCount());
+    });
+  }, []);
   return (
     <header style={{
       height: '64px',
@@ -43,12 +51,15 @@ const Header = ({ setSidebarOpen, notifOpen, setNotifOpen, notifRef, goTo }) => 
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button className="btn-icon" onClick={() => setNotifOpen(o => !o)} style={{ position: 'relative' }}>
             <Bell size={17} />
-            <span style={{
-              position: 'absolute', top: '6px', right: '6px',
-              width: '7px', height: '7px',
-              background: 'var(--danger)', borderRadius: '50%',
-              border: '1.5px solid var(--bg-surface)',
-            }} />
+            {/* L-4: Only show badge when there are unread notifications */}
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute', top: '6px', right: '6px',
+                width: '7px', height: '7px',
+                background: 'var(--danger)', borderRadius: '50%',
+                border: '1.5px solid var(--bg-surface)',
+              }} />
+            )}
           </button>
           <NotificationDropdown
             isOpen={notifOpen}

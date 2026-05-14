@@ -84,7 +84,7 @@ const CVIngestion = () => {
               name: d.name,
               initials: initials || 'CV',
               role: d.experience && d.experience.length > 0 ? d.experience[0].title : 'Software Engineer',
-              match: d.match || Math.floor(Math.random() * 25) + 72,
+              match: d.match ?? 0,   // M-2: no random fallback — show 0 if backend returns nothing
               skills: d.skills || [],
               experience: d.experience && d.experience.length > 0 ? `${d.experience[0].title} at ${d.experience[0].company}` : 'Not detected',
               location: 'Location not specified',

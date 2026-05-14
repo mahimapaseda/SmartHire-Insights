@@ -54,11 +54,21 @@ from neo4j import GraphDatabase
 import atexit
 import os
 import uuid
+import hashlib
 import docx
 from functools import wraps
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(","))
 
 # =========================================================
 # SECURITY CONFIG
@@ -105,18 +115,19 @@ print("=" * 55)
 def init_db():
     print("  Initializing Database Indexes...")
     queries = [
-        "CREATE INDEX candidate_id_idx IF NOT EXISTS FOR (c:Candidate) ON (c.id)",
+        "CREATE CONSTRAINT candidate_id_unique IF NOT EXISTS FOR (c:Candidate) REQUIRE c.id IS UNIQUE",
+        "CREATE CONSTRAINT candidate_email_unique IF NOT EXISTS FOR (c:Candidate) REQUIRE c.email IS UNIQUE",
         "CREATE INDEX skill_name_idx IF NOT EXISTS FOR (s:Skill) ON (s.name)",
         "CREATE INDEX company_name_idx IF NOT EXISTS FOR (co:Company) ON (co.name)",
-        "CREATE INDEX inst_name_idx IF NOT EXISTS FOR (i:Institution) ON (i.name)"
+        "CREATE INDEX inst_name_idx IF NOT EXISTS FOR (i:Institution) ON (i.name)",
     ]
     try:
         with driver.session() as session:
             for q in queries:
                 session.run(q)
-        print("  Indexes verified/created successfully.")
+        logger.info("DB constraints and indexes verified/created.")
     except Exception as e:
-        print(f"  Note: Index creation skipped or failed: {str(e)}")
+        logger.warning(f"Constraint/index creation skipped: {e}")
 
 init_db()
 
@@ -184,8 +195,9 @@ def calculate_match_score(skills):
         score += min(len(skills), 10)
         
         return min(round(score), 99)
-    except:
-        return 75 # Fallback
+    except Exception as e:
+        logger.warning(f"calculate_match_score fallback triggered: {e}")
+        return 75
 # EXTRACT EMAIL
 # =========================================================
 
@@ -215,34 +227,41 @@ def extract_name(text):
 
     # Filter out empty lines to avoid wasting the initial line checks
     lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
+
     # Increase the search space slightly
     combined = " ".join(lines[:15])
     doc      = nlp(combined)
 
-    blacklist = [
-        "curriculum vitae", "resume", "cv", "reference",
-        "profile", "summary", "objective", "personal details", "name"
-    ]
+    blacklist = {
+        "curriculum vitae", "resume", "cv", "reference", "references",
+        "profile", "summary", "objective", "personal details", "name",
+        "page", "skills", "experience", "education", "work history",
+        "contact", "details", "address", "declaration",
+    }
 
     for ent in doc.ents:
         if ent.label_ == "PERSON":
             candidate_name = ent.text.strip()
-            if candidate_name.lower() not in blacklist:
-                if 1 < len(candidate_name.split()) <= 5:
-                    return candidate_name
+            # Must be 2–5 words, not blacklisted, no digits/special chars
+            words = candidate_name.split()
+            if (2 <= len(words) <= 5
+                    and candidate_name.lower() not in blacklist
+                    and not re.search(r'[@\d#\\/]', candidate_name)):
+                return candidate_name
 
-    # Fallback: check the first few valid lines
+    # Fallback: check first few lines — must be ≥2 words (avoids "Page 1", "Skills")
     for line in lines[:5]:
+        words = line.split()
         if (
-            len(line.split()) <= 5
+            2 <= len(words) <= 5                          # M-1: min 2 words
             and not any(kw in line.lower() for kw in blacklist)
-            and not re.search(r'[@\d]', line)
+            and not re.search(r'[@\d#\\/]', line)
+            and not line.isupper()                        # M-1: skip ALL CAPS headings
         ):
             return line
 
-    # If all fails, return a default string rather than completely breaking
     return "Unknown Candidate"
+
 
 
 # =========================================================
@@ -585,6 +604,18 @@ def generate_summary(name, skills, education, experience):
 # (Streamlit helper functions removed for React cleanup)
 
 
+def make_candidate_id(email: str) -> str:
+    """
+    Generate a deterministic candidate ID based on email.
+    Same email always produces the same ID, making Neo4j MERGE truly atomic.
+    Falls back to a random UUID when email is not extractable.
+    """
+    if email and email != "Not Found":
+        digest = hashlib.sha256(email.lower().strip().encode()).hexdigest()[:24]
+        return f"c_{digest}"
+    return str(uuid.uuid4())
+
+
 # =========================================================
 # STORE DATA IN NEO4J
 # =========================================================
@@ -592,7 +623,7 @@ def generate_summary(name, skills, education, experience):
 # =========================================================
 
 def store_candidate_in_neo4j(candidate_id, name, email, phone,
-                              skills, education, experience, match_score):
+                              skills, education, experience, match_score, summary=""):
 
     print()
     print("=" * 55)
@@ -602,10 +633,8 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
     print(f"  Phone     : {phone}")
     print("=" * 55)
 
-    # Guard: skip if name extraction failed
-    if name == "Not Found":
-        print("  [SKIP] Name not extracted — Neo4j save aborted.")
-        print("=" * 55)
+    if not name or name in ("Not Found", "Unknown Candidate"):
+        logger.warning(f"  [SKIP] Name not extracted for id={candidate_id} — Neo4j save aborted.")
         return False
 
     try:
@@ -623,8 +652,10 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
                 SET   c.name = $name,
                       c.email = $email,
                       c.phone = $phone,
-                      c.match_score = $match_score
-            """, id=candidate_id, name=name, email=email, phone=phone, match_score=match_score)
+                      c.match_score = $match_score,
+                      c.summary = $summary
+            """, id=candidate_id, name=name, email=email, phone=phone,
+                 match_score=match_score, summary=summary)
 
             print(f"        Candidate node created  ->  name='{name}'")
 
@@ -721,10 +752,12 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
 # =========================================================
 
 @app.route('/api/ping', methods=['GET'])
+@require_api_key
 def ping_backend():
     return jsonify({"success": True, "message": "Backend is running!"}), 200
 
 @app.route('/api/neo4j-status', methods=['GET'])
+@require_api_key
 def neo4j_status():
     try:
         with driver.session() as session:
@@ -801,16 +834,27 @@ def upload_cv():
     if not (filename_lower.endswith('.pdf') or filename_lower.endswith('.docx')):
         return jsonify({"success": False, "error": "Only PDF and DOCX files are supported"}), 400
 
+    # --- C-3: MIME / magic-byte validation (before saving to disk) ---
+    header_bytes = uploaded_file.read(8)
+    uploaded_file.stream.seek(0)
+    is_pdf  = header_bytes[:4] == b'%PDF'
+    is_docx = header_bytes[:4] == b'PK\x03\x04'   # DOCX is a ZIP
+    if not is_pdf and not is_docx:
+        return jsonify({"success": False, "error": "File content does not match a valid PDF or DOCX."}), 400
+    if filename_lower.endswith('.pdf') and not is_pdf:
+        return jsonify({"success": False, "error": "Extension is .pdf but file is not a real PDF."}), 400
+    if filename_lower.endswith('.docx') and not is_docx:
+        return jsonify({"success": False, "error": "Extension is .docx but file is not a real DOCX."}), 400
+
+    file_ext = ".pdf" if filename_lower.endswith('.pdf') else ".docx"
+    temp_id   = str(uuid.uuid4())
+    file_path = None
+
     try:
-        print()
-        print("=" * 60)
-        print(f"PROCESSING CV : {uploaded_file.filename}")
-        print("=" * 60)
+        logger.info(f"Processing CV: {uploaded_file.filename}")
 
         os.makedirs("uploads", exist_ok=True)
-        candidate_id = str(uuid.uuid4())
-        file_ext = ".pdf" if filename_lower.endswith('.pdf') else ".docx"
-        file_path = os.path.join("uploads", f"{candidate_id}{file_ext}")
+        file_path = os.path.join("uploads", f"{temp_id}{file_ext}")
         uploaded_file.save(file_path)
 
         with open(file_path, "rb") as f:
@@ -819,54 +863,49 @@ def upload_cv():
             else:
                 extracted_text = extract_text_from_docx(f)
 
-        # 2. Extract specific sections
+        # Extract sections
         education_section = extract_section(
             extracted_text,
             ["Education", "Academic Qualifications", "Educational Qualifications", "Academic Background", "Academic Profile"]
         )
-
         experience_section = extract_section(
             extracted_text,
             ["Experience", "Work Experience", "Professional Experience", "Employment History", "Career History", "Work History"]
         )
 
-        # 3. Apply NLP extraction logic
+        # NLP extraction
         name       = extract_name(extracted_text)
         email      = extract_email(extracted_text)
         phone      = extract_phone(extracted_text)
         skills     = extract_skills(extracted_text)
 
-        # Check for existing candidate by email to prevent duplicates
-        if email != "Not Found":
-            try:
-                with driver.session() as session:
-                    result = session.run("MATCH (c:Candidate {email: $email}) RETURN c.id as id", email=email)
-                    record = result.single()
-                    if record:
-                        existing_id = record["id"]
-                        print(f"  [DEDUPE] Found existing candidate with email {email}. Reusing ID: {existing_id}")
-                        candidate_id = existing_id
-            except Exception as e:
-                print(f"  [WARN] Failed to check for existing candidate: {str(e)}")
+        # --- H-2: Deterministic ID from email (atomic dedup — no TOCTOU race) ---
+        candidate_id = make_candidate_id(email)
+
+        # Rename temp file to final candidate_id filename
+        final_path = os.path.join("uploads", f"{candidate_id}{file_ext}")
+        if file_path != final_path:
+            # Remove old file if candidate already existed (re-upload)
+            if os.path.exists(final_path):
+                os.remove(final_path)
+            os.rename(file_path, final_path)
+            file_path = final_path
 
         education = extract_education(
             education_section if education_section.strip() else extracted_text
         )
-
         experience = extract_experience(
             experience_section if experience_section.strip() else extracted_text
         )
-
-        summary = generate_summary(name, skills, education, experience)
-
+        summary     = generate_summary(name, skills, education, experience)
         match_score = calculate_match_score(skills)
 
-        # 4. Save to Neo4j
+        # Save to Neo4j
         neo4j_ok = store_candidate_in_neo4j(
-            candidate_id, name, email, phone, skills, education, experience, match_score
+            candidate_id, name, email, phone, skills, education, experience, match_score, summary
         )
 
-        # 5. Return JSON to React
+        # Return to React
         return jsonify({
             "success": True,
             "neo4j_saved": neo4j_ok,
@@ -885,7 +924,13 @@ def upload_cv():
         }), 200
 
     except Exception as e:
-        print(f"Error processing CV: {str(e)}")
+        # --- H-3: Clean up uploaded file on any failure ---
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        logger.error(f"Error processing CV: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1015,49 +1060,52 @@ def get_candidates():
     try:
         candidates = []
         with driver.session() as session:
+            # --- H-4: Sequential WITH aggregation prevents Cartesian product ---
             result = session.run("""
                 MATCH (c:Candidate)
                 OPTIONAL MATCH (c)-[:HAS_SKILL]->(s:Skill)
+                WITH c, collect(DISTINCT s.name) AS skills
                 OPTIONAL MATCH (c)-[:WORKED_AS]->(j:JobRole)-[:AT_COMPANY]->(co:Company)
+                WITH c, skills, collect(DISTINCT {title: j.title, company: co.name, duration: j.duration}) AS experience
                 OPTIONAL MATCH (c)-[:HAS_EDUCATION]->(d:Degree)-[:STUDIED_AT]->(i:Institution)
-                RETURN c.id AS id,
-                       c.name AS name, 
-                       c.email AS email, 
-                       c.phone AS phone,
+                RETURN c.id          AS id,
+                       c.name        AS name,
+                       c.email       AS email,
+                       c.phone       AS phone,
                        c.match_score AS match_score,
-                       collect(DISTINCT s.name) AS skills,
-                       collect(DISTINCT {title: j.title, company: co.name, duration: j.duration}) AS experience,
+                       c.summary     AS summary,
+                       skills,
+                       experience,
                        collect(DISTINCT {degree: d.name, institution: i.name, year: d.year}) AS education
             """)
             for record in result:
-                name = record["name"]
-                skills = record["skills"]
+                name     = record["name"]
+                skills   = record["skills"]
                 exp_list = [e for e in record["experience"] if e.get("title") is not None]
-                edu_list = [e for e in record["education"] if e.get("degree") is not None]
-                
-                # Ensure missing keys are gracefully handled just in case
+                edu_list = [e for e in record["education"]  if e.get("degree") is not None]
+
                 for e in exp_list:
                     e.setdefault("company", "Unknown")
                 for e in edu_list:
                     e.setdefault("institution", "Unknown")
-                
-                # Mock a summary since we don't store it in Neo4j directly yet
-                summary = generate_summary(name, skills, edu_list, exp_list)
-                
+
+                # --- H-5: Use stored summary, fall back to regeneration only if missing ---
+                summary = record["summary"] or generate_summary(name, skills, edu_list, exp_list)
+
                 candidates.append({
-                    "id": record.get("id") or name.lower().replace(" ", "-"),
-                    "name": name,
-                    "email": record["email"] or "Not Found",
-                    "phone": record["phone"] or "Not Found",
-                    "match": record.get("match_score") or 70,
-                    "skills": skills,
+                    "id":         record.get("id") or name.lower().replace(" ", "-"),
+                    "name":       name,
+                    "email":      record["email"] or "Not Found",
+                    "phone":      record["phone"] or "Not Found",
+                    "match":      record.get("match_score") or 70,
+                    "skills":     skills,
                     "experience": exp_list,
-                    "education": edu_list,
-                    "summary": summary
+                    "education":  edu_list,
+                    "summary":    summary
                 })
         return jsonify({"success": True, "data": candidates}), 200
     except Exception as e:
-        print(f"Error fetching candidates: {str(e)}")
+        logger.error(f"Error fetching candidates: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1110,5 +1158,6 @@ def delete_requirement(req_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Starting Flask API Server on port 5000...")
-    app.run(debug=True, port=5000)
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    logger.info(f"Starting Flask API Server on port 5000 (debug={debug_mode})...")
+    app.run(debug=debug_mode, port=5000, host="0.0.0.0")

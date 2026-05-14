@@ -9,11 +9,18 @@ services:
       - "7474:7474" # HTTP Browser
       - "7687:7687" # Bolt Protocol
     environment:
-      - NEO4J_AUTH=neo4j/neo4j123
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-neo4j123}
       - NEO4J_PLUGINS=["apoc"]
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
+    # M-5: Health check so backend waits for DB to actually be ready
+    healthcheck:
+      test: ["CMD", "neo4j", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   # 2. Python Flask Backend (NLP Engine)
   backend:
@@ -21,12 +28,17 @@ services:
     container_name: smarthire_backend
     ports:
       - "5000:5000"
+    env_file:
+      - .env            # L-2: secrets in .env, never in compose
     environment:
       - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=neo4j123
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-neo4j123}
+      - FLASK_DEBUG=false
+      - ALLOWED_ORIGINS=http://localhost:5173
     depends_on:
-      - neo4j
+      neo4j:
+        condition: service_healthy  # M-5: wait for healthy state, not just started
     volumes:
       - ./backend/uploads:/app/uploads
 

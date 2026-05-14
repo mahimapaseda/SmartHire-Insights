@@ -16,6 +16,7 @@ import Help from '../components/Help';
 import RequirementsImport from '../components/RequirementsImport';
 import { candidateStore } from '../utils/candidateStore';
 import { notificationStore } from '../utils/notificationStore';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 const PAGE_TITLES = {
   dashboard:     { title: 'Dashboard',          sub: 'AI-powered recruitment intelligence.' },
@@ -40,6 +41,8 @@ const Dashboard = () => {
   const [unreadCount, setUnreadCount] = useState(notificationStore.getUnreadCount());
   const notifRef = useRef(null);
 
+  const [fetchError, setFetchError] = useState(candidateStore.getFetchError());
+
   useEffect(() => {
     return notificationStore.subscribe(() => {
       setUnreadCount(notificationStore.getUnreadCount());
@@ -51,6 +54,13 @@ const Dashboard = () => {
     if (!isAuth) navigate('/login', { replace: true });
     candidateStore.fetchFromNeo4j();
   }, [navigate]);
+
+  // Track fetchError from store
+  useEffect(() => {
+    return candidateStore.subscribe(() => {
+      setFetchError(candidateStore.getFetchError());
+    });
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -137,6 +147,29 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+
+          {/* H-7: Error banner when Neo4j fetch fails */}
+          {fetchError && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              padding: '0.875rem 1.25rem', marginBottom: '1.25rem',
+              borderRadius: 'var(--r-lg)',
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.25)',
+            }}>
+              <AlertTriangle size={16} color="var(--danger)" />
+              <p style={{ flex: 1, fontSize: '0.83rem', color: 'var(--danger)' }}>
+                Could not connect to backend: <strong>{fetchError}</strong>
+              </p>
+              <button
+                className="btn-ghost"
+                style={{ fontSize: '0.78rem' }}
+                onClick={() => { candidateStore.clearError(); candidateStore.fetchFromNeo4j(); }}
+              >
+                <RefreshCw size={13} /> Retry
+              </button>
+            </div>
+          )}
 
           <div key={`content-${activeTab}-${selectedCandidate?.id}`} className="page-enter">
             {renderContent()}
