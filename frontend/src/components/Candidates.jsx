@@ -15,6 +15,7 @@ const Candidates = ({ onSelectCandidate }) => {
   const [modal,    setModal]   = useState(null);
   const [roleFilter, setRoleFilter] = useState('All');
   const [sortBy,   setSortBy]  = useState('match');
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // id of candidate to delete
 
   // Subscribe to store updates (new CVs parsed)
   useEffect(() => {
@@ -36,9 +37,17 @@ const Candidates = ({ onSelectCandidate }) => {
       .sort((a, b) => sortBy === 'match' ? b.match - a.match : a.name.localeCompare(b.name));
   }, [candidates, query, roleFilter, sortBy]);
 
-  const removeCandidate = (id, e) => {
+  const handleRemoveClick = (id, e) => {
     e.stopPropagation();
-    candidateStore.remove(id);
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm) {
+      candidateStore.remove(deleteConfirm);
+      setDeleteConfirm(null);
+      if (modal && modal.id === deleteConfirm) setModal(null);
+    }
   };
 
   return (
@@ -93,9 +102,43 @@ const Candidates = ({ onSelectCandidate }) => {
             {query || roleFilter !== 'All' ? `No candidates match your filters.` : 'No candidates yet. Upload CVs to get started.'}
           </div>
         ) : filtered.map(c => (
-          <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} onRemove={removeCandidate} />
+          <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} onRemove={handleRemoveClick} />
         ))}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1100,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setDeleteConfirm(null)}>
+          <div className="card animate-scale-in" style={{ padding: '2rem', maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={18} color="var(--danger)" />
+              </div>
+              <div>
+                <p style={{ fontWeight: '700', fontSize: '0.95rem' }}>Delete Candidate?</p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{candidates.find(c => c.id === deleteConfirm)?.name}</p>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              This will permanently remove the candidate's profile, Intelligence Graph data, and the associated source file from the server. This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button className="btn-ghost" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button
+                className="btn-primary"
+                style={{ background: 'var(--danger)', borderColor: 'var(--danger)', minWidth: '100px', justifyContent: 'center' }}
+                onClick={confirmDelete}
+              >
+                <Trash2 size={14} /> Delete Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {modal && (
