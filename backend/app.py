@@ -100,20 +100,173 @@ NEO4J_URI      = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687")
 NEO4J_USER     = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "neo4j123")
 
-driver = GraphDatabase.driver(
-    NEO4J_URI,
-    auth=(NEO4J_USER, NEO4J_PASSWORD)
-)
+# --- MOCK DATABASE FALLBACK ---
+# This allows the site to run even without a live Neo4j instance
+import json
+
+class MockSession:
+    def __init__(self, db_file="mock_db.json"):
+        self.db_file = db_file
+        self._load()
+
+    def _load(self):
+        if os.path.exists(self.db_file):
+            try:
+                with open(self.db_file, "r") as f:
+                    self.data = json.load(f)
+            except:
+                self.data = {"candidates": {}, "requirements": {}, "skills": set()}
+        else:
+            self.data = {"candidates": {}, "requirements": {}, "skills": set()}
+        if isinstance(self.data.get("skills"), list):
+            self.data["skills"] = set(self.data["skills"])
+
+    def _save(self):
+        to_save = self.data.copy()
+        to_save["skills"] = list(to_save["skills"])
+        with open(self.db_file, "w") as f:
+            json.dump(to_save, f, indent=2)
+
+    def run(self, query, **kwargs):
+        # Extremely simplified Cypher parser for mock mode
+        q = query.strip().upper()
+        
+        if "CREATE CONSTRAINT" in q or "CREATE INDEX" in q:
+            return []
+            
+        if "MERGE (C:CANDIDATE" in q:
+            c_id = kwargs.get("id")
+            self.data["candidates"][c_id] = {
+                "id": c_id,
+                "name": kwargs.get("name"),
+                "email": kwargs.get("email"),
+                "phone": kwargs.get("phone"),
+                "match_score": kwargs.get("match_score"),
+                "summary": kwargs.get("summary"),
+                "skills": [],
+                "experience": [],
+                "education": []
+            }
+            self._save()
+            
+        elif "MERGE (R:REQUIREMENT" in q:
+            r_id = kwargs.get("id")
+            self.data["requirements"][r_id] = {
+                "id": r_id,
+                "title": kwargs.get("title"),
+                "role": kwargs.get("role"),
+                "summary": kwargs.get("summary"),
+                "description": kwargs.get("description"),
+                "addedAt": str(kwargs.get("addedAt", "2026-05-15")),
+                "skills": []
+            }
+            self._save()
+
+        elif "MERGE (S:SKILL" in q:
+            skill = kwargs.get("skill") or kwargs.get("name")
+            if skill:
+                self.data["skills"].add(skill)
+                # Link to candidate if in query
+                if "MATCH (C:CANDIDATE" in q:
+                    c_id = kwargs.get("id")
+                    if c_id in self.data["candidates"] and skill not in self.data["candidates"][c_id]["skills"]:
+                        self.data["candidates"][c_id]["skills"].append(skill)
+                # Link to requirement if in query
+                if "MATCH (R:REQUIREMENT" in q:
+                    r_id = kwargs.get("id")
+                    if r_id in self.data["requirements"] and skill not in self.data["requirements"][r_id]["skills"]:
+                        self.data["requirements"][r_id]["skills"].append(skill)
+            self._save()
+
+        elif "MERGE (D:DEGREE" in q:
+            c_id = kwargs.get("id")
+            if c_id in self.data["candidates"]:
+                self.data["candidates"][c_id]["education"].append({
+                    "degree": kwargs.get("degree"),
+                    "institution": kwargs.get("institution"),
+                    "year": kwargs.get("year")
+                })
+            self._save()
+
+        elif "MERGE (J:JOBROLE" in q:
+            c_id = kwargs.get("id")
+            if c_id in self.data["candidates"]:
+                self.data["candidates"][c_id]["experience"].append({
+                    "title": kwargs.get("title"),
+                    "company": kwargs.get("company"),
+                    "duration": kwargs.get("duration")
+                })
+            self._save()
+
+        elif "MATCH (C:CANDIDATE)" in q and "RETURN" in q:
+            class Record:
+                def __init__(self, d): self.d = d
+                def __getitem__(self, k): return self.d.get(k)
+                def get(self, k, default=None): return self.d.get(k, default)
+            return [Record(c) for c in self.data["candidates"].values()]
+
+        elif "MATCH (R:REQUIREMENT)" in q and "RETURN" in q:
+            class Record:
+                def __init__(self, d): self.d = d
+                def __getitem__(self, k): return self.d.get(k)
+                def get(self, k, default=None): return self.d.get(k, default)
+            return [Record(r) for r in self.data["requirements"].values()]
+
+        elif "DETACH DELETE C" in q:
+            c_id = kwargs.get("id")
+            if c_id in self.data["candidates"]:
+                del self.data["candidates"][c_id]
+                self._save()
+                class Res:
+                    def single(self): return {"cnt": 1}
+                return Res()
+            class Res:
+                def single(self): return {"cnt": 0}
+            return Res()
+
+        elif "DETACH DELETE R" in q:
+            r_id = kwargs.get("id")
+            if r_id in self.data["requirements"]:
+                del self.data["requirements"][r_id]
+                self._save()
+                class Res:
+                    def single(self): return {"count": 1}
+                return Res()
+            class Res:
+                def single(self): return {"count": 0}
+            return Res()
+
+        return []
+
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc_val, exc_tb): pass
+
+class MockDriver:
+    def session(self): return MockSession()
+    def close(self): pass
+
+try:
+    driver = GraphDatabase.driver(
+        NEO4J_URI,
+        auth=(NEO4J_USER, NEO4J_PASSWORD)
+    )
+    # Test connection
+    with driver.session() as session:
+        session.run("RETURN 1")
+    logger.info("Successfully connected to Neo4j.")
+    IS_MOCK = False
+except Exception as e:
+    logger.warning(f"Neo4j connection failed ({e}). Switching to MOCK mode.")
+    driver = MockDriver()
+    IS_MOCK = True
 
 atexit.register(driver.close)
 
-print("=" * 55)
-
-# =========================================================
-# DATABASE INITIALIZATION (INDEXES)
-# =========================================================
-
 def init_db():
+    if IS_MOCK:
+        logger.info("  Mock Mode: Skipping DB Index Initialization.")
+        return
+        
     print("  Initializing Database Indexes...")
     queries = [
         "CREATE CONSTRAINT candidate_id_unique IF NOT EXISTS FOR (c:Candidate) REQUIRE c.id IS UNIQUE",
@@ -279,8 +432,10 @@ def extract_name(text):
             continue
             
         words = line.split()
-        if 2 <= len(words) <= 4 and not line.isupper():
-            return line.title()
+        if 2 <= len(words) <= 4:
+            # Check if it's not a common word and doesn't have numbers
+            if line.lower() not in blacklist and not re.search(r'\d', line):
+                return line.title()
 
     # Strategy 3: Email-based fallback (if name extraction fails)
     email = extract_email(text)
@@ -1106,6 +1261,7 @@ def get_requirements():
                 })
         return jsonify({"success": True, "data": requirements}), 200
     except Exception as e:
+        logger.error(f"Error fetching requirements: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/candidates', methods=['GET'])
@@ -1172,10 +1328,14 @@ def delete_candidate(candidate_id):
         with driver.session() as session:
             # DETACH DELETE removes the node and all its incoming/outgoing relationships
             # After deleting the candidate, we also clean up orphaned nodes that were only linked to this candidate
-            session.run("""
+            res = session.run("""
                 MATCH (c:Candidate {id: $id})
+                WITH c, count(c) as cnt
                 DETACH DELETE c
+                RETURN cnt
             """, id=candidate_id)
+            record = res.single()
+            count = record["cnt"] if record else 0
             
             # Cleanup orphaned detail nodes
             session.run("""
@@ -1184,7 +1344,6 @@ def delete_candidate(candidate_id):
                 AND NOT (n)--()
                 DELETE n
             """)
-            count = 1 # Assuming it existed or we don't care about the count for the return as much as the cleanup
             
         if count == 0:
             return jsonify({"success": False, "error": "Candidate not found"}), 404

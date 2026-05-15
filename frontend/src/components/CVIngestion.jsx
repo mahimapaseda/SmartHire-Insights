@@ -16,7 +16,8 @@ const MAX_MB = 10;
 
 /* ══════════════════════════════════════════════════════════════
    CV INGESTION — multi-file with per-CV extracted profile
-══════════════════════════════════════════════════════════════ */import { ingestionStore } from '../utils/ingestionStore';
+══════════════════════════════════════════════════════════════ */
+import { ingestionStore } from '../utils/ingestionStore';
 
 const CVIngestion = () => {
   const [dragging, setDragging] = useState(false);
