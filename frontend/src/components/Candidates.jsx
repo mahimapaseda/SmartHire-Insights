@@ -49,20 +49,21 @@ const Candidates = ({ onSelectCandidate }) => {
 
   const grouped = useMemo(() => {
     const groups = {};
-    const reqTitles = requirements.map(r => r.title);
+    const activeRequirements = requirements.filter(r => r.isActive !== false);
+    const reqTitles = activeRequirements.map(r => r.title);
 
     filtered.forEach(c => {
       let groupName = 'General Talent Pool';
       
-      const matchingReq = requirements.find(req => 
+      const matchingReq = activeRequirements.find(req => 
         c.role.toLowerCase().includes(req.title.toLowerCase()) || 
         req.title.toLowerCase().includes(c.role.toLowerCase())
       );
 
       if (matchingReq) {
         groupName = matchingReq.title;
-      } else if (requirements.length > 0 && c.match > 60) {
-        groupName = requirements[0].title;
+      } else if (activeRequirements.length > 0 && c.match > 60) {
+        groupName = activeRequirements[0].title;
       } else {
         groupName = c.role || 'Unspecified Role';
       }

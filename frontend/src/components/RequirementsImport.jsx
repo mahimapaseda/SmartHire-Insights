@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, X, CheckCircle2, Loader2, Briefcase, Zap, Search,
   ClipboardList, AlertCircle, Pencil, Trash2, ChevronDown,
-  ChevronUp, Save, RefreshCw, FileText, Upload,
+  ChevronUp, Save, RefreshCw, FileText, Upload, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { requirementsStore } from '../utils/requirementsStore';
 import { API_URL, getHeaders } from '../config';
@@ -55,7 +55,7 @@ const RequirementsImport = ({ onComplete }) => {
   }, []);
 
   function emptyForm() {
-    return { title: '', role: 'Engineering', skills: [], summary: '', description: '' };
+    return { title: '', role: 'Engineering', skills: [], summary: '', description: '', isActive: true };
   }
 
   /* ── CREATE ── */
@@ -76,6 +76,7 @@ const RequirementsImport = ({ onComplete }) => {
       skills:      req.skills      ? [...req.skills] : [],
       summary:     req.summary     || '',
       description: req.description || '',
+      isActive:    req.isActive ?? true,
     });
     setRawText('');
     setExtractStep('idle');
@@ -108,6 +109,12 @@ const RequirementsImport = ({ onComplete }) => {
     setDeleteLoading(false);
     setDeleteId(null);
     if (expandedId === deleteId) setExpandedId(null);
+  };
+
+  /* ── TOGGLE ACTIVE ── */
+  const handleToggle = async (req) => {
+    const newStatus = !(req.isActive ?? true);
+    await requirementsStore.update(req.id, { isActive: newStatus });
   };
 
   /* ── AI EXTRACT ── */
@@ -327,6 +334,7 @@ const RequirementsImport = ({ onComplete }) => {
               req={req}
               expanded={expandedId === req.id}
               onToggle={() => setExpandedId(expandedId === req.id ? null : req.id)}
+              onStatusToggle={() => handleToggle(req)}
               onEdit={() => openEdit(req)}
               onDelete={() => setDeleteId(req.id)}
             />
@@ -383,7 +391,7 @@ const RequirementsImport = ({ onComplete }) => {
 /* ─────────────────────────────────────────────────────────────────────
    REQUIREMENT CARD — with expand, edit, delete
 ───────────────────────────────────────────────────────────────────── */
-const RequirementCard = ({ req, expanded, onToggle, onEdit, onDelete }) => {
+const RequirementCard = ({ req, expanded, onToggle, onStatusToggle, onEdit, onDelete }) => {
   const skillCount = req.skills?.length ?? 0;
   const badge = {
     'Frontend Engineering':     { label: 'Frontend',    color: '#3b82f6' },
@@ -398,6 +406,8 @@ const RequirementCard = ({ req, expanded, onToggle, onEdit, onDelete }) => {
     <div className="card" style={{
       overflow: 'hidden', transition: 'var(--transition)',
       border: expanded ? '1px solid rgba(26,92,56,0.3)' : '1px solid var(--border)',
+      opacity: (req.isActive ?? true) ? 1 : 0.65,
+      filter: (req.isActive ?? true) ? 'none' : 'grayscale(0.4)',
     }}>
       {/* ── Row ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem' }}>
@@ -426,6 +436,7 @@ const RequirementCard = ({ req, expanded, onToggle, onEdit, onDelete }) => {
           <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
             {skillCount} skill{skillCount !== 1 ? 's' : ''} required
             {req.addedAt && ` · Added ${new Date(req.addedAt).toLocaleDateString()}`}
+            {!(req.isActive ?? true) && <span style={{ color: 'var(--danger)', fontWeight: '700', marginLeft: '8px' }}>· INACTIVE</span>}
           </p>
         </div>
 
@@ -440,7 +451,25 @@ const RequirementCard = ({ req, expanded, onToggle, onEdit, onDelete }) => {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
+          <button
+            className="btn-ghost"
+            title={(req.isActive ?? true) ? 'Disable' : 'Enable'}
+            onClick={(e) => { e.stopPropagation(); onStatusToggle(); }}
+            style={{ 
+              padding: '0.4rem 0.6rem', 
+              fontSize: '0.7rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.4rem',
+              color: (req.isActive ?? true) ? 'var(--text-muted)' : 'var(--primary)'
+            }}
+          >
+            {(req.isActive ?? true) ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+            <span style={{ fontWeight: '700' }}>{(req.isActive ?? true) ? 'ACTIVE' : 'DISABLED'}</span>
+          </button>
+          
+          <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 0.25rem' }}></div>
           <button
             className="btn-icon"
             title="Edit"

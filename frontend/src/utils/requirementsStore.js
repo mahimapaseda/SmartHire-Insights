@@ -50,7 +50,22 @@ export const requirementsStore = {
         headers: getHeaders(),
         body:    JSON.stringify(updates),
       });
-      const data = await res.json();
+      
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Server error response:', text);
+        throw new Error(`Server returned ${res.status}: ${text.slice(0, 100)}`);
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        const text = await res.text();
+        console.error('Failed to parse JSON. Response text:', text);
+        throw new Error('Server returned invalid JSON. Check console for details.');
+      }
+
       if (!data.success) {
         _requirements = backup;   // rollback
         _error = data.error || 'Update failed';

@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 # Allow both localhost and 127.0.0.1 to prevent common CORS fetch errors
-CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # =========================================================
 # SECURITY CONFIG
@@ -82,6 +82,9 @@ SH_API_KEY = os.getenv("SH_API_KEY", "sh_secret_key_2026")
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Allow preflight OPTIONS requests to pass through
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
         if request.headers.get('x-api-key') != SH_API_KEY:
             return jsonify({"success": False, "error": "Unauthorized: Invalid API Key"}), 401
         return f(*args, **kwargs)
@@ -1208,7 +1211,7 @@ def upload_cv():
 # STORE REQUIREMENT IN NEO4J
 # =========================================================
 
-def store_requirement_in_neo4j(req_id, title, role, skills, summary, description):
+def store_requirement_in_neo4j(req_id, title, role, skills, summary, description, is_active=True):
     try:
         with driver.session() as session:
             session.run("""
@@ -1217,8 +1220,9 @@ def store_requirement_in_neo4j(req_id, title, role, skills, summary, description
                       r.role = $role,
                       r.summary = $summary,
                       r.description = $description,
+                      r.isActive = $isActive,
                       r.addedAt = datetime()
-            """, id=req_id, title=title, role=role, summary=summary, description=description)
+            """, id=req_id, title=title, role=role, summary=summary, description=description, isActive=is_active)
 
             # Link skills
             for skill in skills:
@@ -1281,19 +1285,110 @@ def add_requirement():
         else:
             role = "Engineering"
             
+    isActive = data.get('isActive', True)
+    
     if not title: title = "Software Engineer"
     
-    success = store_requirement_in_neo4j(req_id, title, role, skills, summary, text)
+    success = store_requirement_in_neo4j(req_id, title, role, skills, summary, text, isActive)
     
     if success:
         return jsonify({
             "success": True, 
             "data": {
                 "id": req_id, "title": title, "role": role, 
-                "skills": skills, "summary": summary
+                "skills": skills, "summary": summary, "isActive": isActive
             }
         }), 201
     return jsonify({"success": False, "error": "Failed to save requirement"}), 500
+
+@app.route('/api/requirements/<req_id>', methods=['PUT', 'DELETE', 'OPTIONS'], strict_slashes=False)
+@require_api_key
+def handle_requirement_item(req_id):
+    """Update or Delete a requirement."""
+    # Handle CORS preflight — must return before touching request.json
+    if request.method == 'OPTIONS':
+        from flask import make_response
+        resp = make_response('', 200)
+        resp.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        resp.headers['Access-Control-Allow-Methods'] = 'PUT, DELETE, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, x-api-key'
+        return resp
+
+    if request.method == 'DELETE':
+        print(f"  Deleting Requirement: {req_id}")
+        try:
+            with driver.session() as session:
+                result = session.run("MATCH (r:Requirement {id: $id}) DETACH DELETE r RETURN count(r) as count", id=req_id)
+                count = result.single()["count"]
+            if count == 0:
+                return jsonify({"success": False, "error": "Requirement not found"}), 404
+            return jsonify({"success": True, "message": "Requirement deleted successfully"}), 200
+        except Exception as e:
+            print(f"  Delete Error: {str(e)}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # Else it's PUT
+    data = request.json
+    print(f"  Updating Requirement: {req_id}")
+    
+    title = data.get('title')
+    role = data.get('role')
+    skills = data.get('skills')
+    summary = data.get('summary')
+    description = data.get('description') or data.get('text')
+    is_active = data.get('isActive')
+    
+    try:
+        with driver.session() as session:
+            # Update core properties if provided
+            props = []
+            params = {"id": req_id}
+            if title is not None: props.append("r.title = $title"); params["title"] = title
+            if role is not None: props.append("r.role = $role"); params["role"] = role
+            if summary is not None: props.append("r.summary = $summary"); params["summary"] = summary
+            if description is not None: props.append("r.description = $description"); params["description"] = description
+            if is_active is not None: props.append("r.isActive = $isActive"); params["isActive"] = is_active
+            
+            if props:
+                session.run(f"MATCH (r:Requirement {{id: $id}}) SET {', '.join(props)}", **params)
+            
+            # Update skills if provided
+            if skills is not None:
+                # Remove old skills
+                session.run("MATCH (r:Requirement {id: $id})-[rel:REQUIRES_SKILL]->() DELETE rel", id=req_id)
+                # Link new skills
+                for skill in skills:
+                    session.run("""
+                        MATCH (r:Requirement {id: $id})
+                        MERGE (s:Skill {name: $skill})
+                        MERGE (r)-[:REQUIRES_SKILL]->(s)
+                    """, id=req_id, skill=skill)
+            
+            # Fetch updated record
+            result = session.run("""
+                MATCH (r:Requirement {id: $id})
+                OPTIONAL MATCH (r)-[:REQUIRES_SKILL]->(s:Skill)
+                RETURN r.id AS id, r.title AS title, r.role AS role, 
+                       r.summary AS summary, r.description AS description,
+                       r.isActive AS isActive,
+                       collect(s.name) AS skills
+            """, id=req_id)
+            record = result.single()
+            if not record:
+                return jsonify({"success": False, "error": "Requirement not found"}), 404
+                
+            return jsonify({
+                "success": True, 
+                "data": {
+                    "id": record["id"], "title": record["title"], "role": record["role"],
+                    "skills": record["skills"], "summary": record["summary"], 
+                    "isActive": record.get("isActive", True)
+                }
+            }), 200
+            
+    except Exception as e:
+        print(f"  Update Error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/requirements', methods=['GET'])
 @require_api_key
@@ -1306,6 +1401,7 @@ def get_requirements():
                 OPTIONAL MATCH (r)-[:REQUIRES_SKILL]->(s:Skill)
                 RETURN r.id AS id, r.title AS title, r.role AS role, 
                        r.summary AS summary, r.description AS description,
+                       r.isActive AS isActive,
                        r.addedAt AS addedAt,
                        collect(s.name) AS skills
                 ORDER BY r.addedAt DESC
@@ -1318,6 +1414,7 @@ def get_requirements():
                     "summary": record["summary"],
                     "description": record["description"],
                     "skills": record["skills"],
+                    "isActive": record.get("isActive", True),
                     "addedAt": str(record["addedAt"])
                 })
         return jsonify({"success": True, "data": requirements}), 200
@@ -1425,25 +1522,8 @@ def delete_candidate(candidate_id):
         print(f"  Delete Error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/requirements/<req_id>', methods=['DELETE'])
-@require_api_key
-def delete_requirement(req_id):
-    """Delete a requirement and its relationships from Neo4j."""
-    print(f"  Deleting Requirement: {req_id}")
-    try:
-        with driver.session() as session:
-            result = session.run("MATCH (r:Requirement {id: $id}) DETACH DELETE r RETURN count(r) as count", id=req_id)
-            count = result.single()["count"]
-            
-        if count == 0:
-            return jsonify({"success": False, "error": "Requirement not found"}), 404
-            
-        return jsonify({"success": True, "message": "Requirement deleted successfully"}), 200
-    except Exception as e:
-        print(f"  Delete Error: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
-    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    debug_mode = True
     logger.info(f"Starting Flask API Server on port 5000 (debug={debug_mode})...")
     app.run(debug=debug_mode, port=5000, host="0.0.0.0")
