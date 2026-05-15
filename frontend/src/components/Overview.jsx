@@ -50,8 +50,8 @@ const Overview = ({ onIngest }) => {
   })) : ACTIVITY_PLACEHOLDER;
 
   const STATS = [
-    { label: 'Total Candidates',  value: String(candidateCount), delta: 'Total extracted pool', icon: FileCheck2,    featured: true },
-    { label: 'Active Roles',      value: String(reqCount),      delta: 'Targeted vacancies',    icon: CalendarClock, featured: false },
+    { label: 'Parsed CVs',        value: String(candidateCount), delta: 'Total extracted pool', icon: FileCheck2,    featured: true },
+    { label: 'Active Requirements', value: String(reqCount),      delta: 'Targeted roles',        icon: CalendarClock, featured: false },
     { label: 'Neo4j Entities',    value: String(candidateCount * 6 + reqCount * 3), delta: 'Graph nodes', icon: Database, featured: false },
     { label: 'System Health',     value: '99%',                  delta: 'All services up',       icon: TrendingUp,    featured: false },
   ];

@@ -21,8 +21,8 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 const PAGE_TITLES = {
   dashboard:     { title: 'Dashboard',          sub: 'AI-powered recruitment intelligence.' },
   upload:        { title: 'CV Ingestion',        sub: 'Upload and parse candidate resumes.' },
-  requirements:  { title: 'Candidates',       sub: 'Define and import candidate roles and requirements.' },
-  candidates:    { title: 'Talent Pool',        sub: 'AI-ranked candidate intelligence pool.' },
+  requirements:  { title: 'Requirements',       sub: 'Define and import recruiter requirements.' },
+  candidates:    { title: 'Candidates',          sub: 'AI-ranked candidate intelligence pool.' },
   search:        { title: 'Graph Search',        sub: 'Explore the knowledge graph.' },
   notifications: { title: 'Notifications',       sub: 'Real-time activity feed.' },
   face:          { title: 'Face Recognition',    sub: 'Emotion detection from interview footage.' },
