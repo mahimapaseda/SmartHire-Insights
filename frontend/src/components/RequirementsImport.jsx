@@ -167,7 +167,7 @@ const RequirementsImport = ({ onComplete }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {requirements.length} requirement{requirements.length !== 1 ? 's' : ''} stored
+            {requirements.length} candidate{requirements.length !== 1 ? 's' : ''} stored
           </span>
           {storeError && (
             <span style={{ fontSize: '0.78rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -188,7 +188,7 @@ const RequirementsImport = ({ onComplete }) => {
             <RefreshCw size={13} /> Refresh
           </button>
           <button className="btn-primary" onClick={openCreate} style={{ fontSize: '0.82rem' }}>
-            <Plus size={14} /> New Requirement
+            <Plus size={14} /> New Candidate
           </button>
         </div>
       </div>
@@ -198,7 +198,7 @@ const RequirementsImport = ({ onComplete }) => {
         <div className="card animate-scale-in" style={{ padding: '1.75rem', border: '1px solid var(--primary)', boxShadow: '0 0 0 3px rgba(26,92,56,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1rem' }}>
-              {editingId ? '✏️ Edit Requirement' : '➕ New Requirement'}
+              {editingId ? '✏️ Edit Candidate' : '➕ New Candidate'}
             </h3>
             <button className="btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => setShowForm(false)}>
               <X size={14} /> Cancel
@@ -309,7 +309,7 @@ const RequirementsImport = ({ onComplete }) => {
             >
               {loading
                 ? <><Loader2 size={14} className="animate-spin" /> Saving…</>
-                : <><Save size={14} /> {editingId ? 'Save Changes' : 'Create Requirement'}</>
+                : <><Save size={14} /> {editingId ? 'Save Changes' : 'Create Candidate'}</>
               }
             </button>
           </div>
@@ -353,14 +353,14 @@ const RequirementsImport = ({ onComplete }) => {
                 <Trash2 size={18} color="var(--danger)" />
               </div>
               <div>
-                <p style={{ fontWeight: '700', fontSize: '0.95rem' }}>Delete Requirement?</p>
+                <p style={{ fontWeight: '700', fontSize: '0.95rem' }}>Delete Candidate Role?</p>
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   {requirements.find(r => r.id === deleteId)?.title}
                 </p>
               </div>
             </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              This will permanently remove the requirement and all its skill links from Neo4j. Matched candidates are unaffected.
+              This will permanently remove the candidate role and all its skill links from Neo4j. Talent Pool data is unaffected.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button className="btn-ghost" onClick={() => setDeleteId(null)}>Cancel</button>
@@ -496,7 +496,7 @@ const RequirementCard = ({ req, expanded, onToggle, onEdit, onDelete }) => {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button className="btn-outline" style={{ fontSize: '0.78rem' }} onClick={onEdit}>
-              <Pencil size={13} /> Edit This Requirement
+              <Pencil size={13} /> Edit This Candidate
             </button>
             <button
               className="btn-ghost"
@@ -560,13 +560,13 @@ const EmptyState = ({ onAdd }) => (
       <ClipboardList size={28} color="var(--primary)" />
     </div>
     <div>
-      <p style={{ fontWeight: '700', fontSize: '1rem', marginBottom: '0.4rem' }}>No Requirements Yet</p>
+      <p style={{ fontWeight: '700', fontSize: '1rem', marginBottom: '0.4rem' }}>No Candidates Yet</p>
       <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)', maxWidth: '320px' }}>
         Create your first job requirement. The AI will extract skills automatically from your job description.
       </p>
     </div>
     <button className="btn-primary" onClick={onAdd}>
-      <Plus size={15} /> Create First Requirement
+      <Plus size={15} /> Create First Candidate
     </button>
   </div>
 );
