@@ -6,41 +6,81 @@ import {
   Trash2,
 } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
+import { requirementsStore } from '../utils/requirementsStore';
 
 const matchColor = (m) => m >= 95 ? 'var(--primary)' : m >= 85 ? 'var(--warning)' : 'var(--text-secondary)';
 
 const Candidates = ({ onSelectCandidate }) => {
   const [candidates, setCandidates] = useState(candidateStore.getAll());
+  const [requirements, setRequirements] = useState(requirementsStore.getAll());
   const [query,    setQuery]   = useState('');
   const [modal,    setModal]   = useState(null);
   const [roleFilter, setRoleFilter] = useState('All');
   const [sortBy,   setSortBy]  = useState('match');
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // id of candidate to delete
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  // Subscribe to store updates (new CVs parsed)
   useEffect(() => {
-    return candidateStore.subscribe(() => setCandidates(candidateStore.getAll()));
+    requirementsStore.fetchFromBackend();
+    const subC = candidateStore.subscribe(() => setCandidates(candidateStore.getAll()));
+    const subR = requirementsStore.subscribe(() => setRequirements(requirementsStore.getAll()));
+    return () => { subC(); subR(); };
   }, []);
 
   const roles = useMemo(() => {
     const r = new Set(candidates.map(c => c.role));
-    return ['All', ...Array.from(r)];
-  }, [candidates]);
+    const reqTitles = requirements.map(req => req.title);
+    return ['All', ...Array.from(new Set([...reqTitles, ...r]))];
+  }, [candidates, requirements]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return candidates
       .filter(c =>
-        (roleFilter === 'All' || c.role === roleFilter) &&
+        (roleFilter === 'All' || c.role === roleFilter || requirements.some(r => r.title === roleFilter)) &&
         (!q || c.name.toLowerCase().includes(q) || c.role.toLowerCase().includes(q) || c.skills.some(s => s.toLowerCase().includes(q)))
       )
       .sort((a, b) => sortBy === 'match' ? b.match - a.match : a.name.localeCompare(b.name));
-  }, [candidates, query, roleFilter, sortBy]);
+  }, [candidates, query, roleFilter, sortBy, requirements]);
 
   const handleRemoveClick = (id, e) => {
     e.stopPropagation();
     setDeleteConfirm(id);
   };
+
+  const grouped = useMemo(() => {
+    const groups = {};
+    const reqTitles = requirements.map(r => r.title);
+
+    filtered.forEach(c => {
+      let groupName = 'General Talent Pool';
+      
+      const matchingReq = requirements.find(req => 
+        c.role.toLowerCase().includes(req.title.toLowerCase()) || 
+        req.title.toLowerCase().includes(c.role.toLowerCase())
+      );
+
+      if (matchingReq) {
+        groupName = matchingReq.title;
+      } else if (requirements.length > 0 && c.match > 60) {
+        groupName = requirements[0].title;
+      } else {
+        groupName = c.role || 'Unspecified Role';
+      }
+
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(c);
+    });
+
+    const sortedEntries = Object.entries(groups).sort(([a], [b]) => {
+      const aIsReq = reqTitles.includes(a);
+      const bIsReq = reqTitles.includes(b);
+      if (aIsReq && !bIsReq) return -1;
+      if (!aIsReq && bIsReq) return 1;
+      return a.localeCompare(b);
+    });
+
+    return Object.fromEntries(sortedEntries);
+  }, [filtered, requirements]);
 
   const confirmDelete = () => {
     if (deleteConfirm) {
@@ -95,14 +135,35 @@ const Candidates = ({ onSelectCandidate }) => {
         </div>
       </div>
 
-      {/* List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+      {/* List (Grouped by Role) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {filtered.length === 0 ? (
           <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             {query || roleFilter !== 'All' ? `No candidates match your filters.` : 'No candidates yet. Upload CVs to get started.'}
           </div>
-        ) : filtered.map(c => (
-          <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} onRemove={handleRemoveClick} />
+        ) : Object.entries(grouped).map(([role, list]) => (
+          <div key={role} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 0.25rem' }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                color: requirements.some(req => req.title === role) ? 'var(--primary)' : 'var(--text-muted)'
+              }}>
+                {requirements.some(req => req.title === role) && <Briefcase size={12} />}
+                <h3 style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {role}
+                </h3>
+              </div>
+              <span className="badge badge-muted" style={{ fontSize: '0.65rem', borderRadius: '12px', padding: '0.1rem 0.5rem' }}>{list.length}</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)', opacity: 0.4 }}></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              {list.map(c => (
+                <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} onRemove={handleRemoveClick} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
