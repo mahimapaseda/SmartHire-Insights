@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Search, MapPin, GraduationCap, Mail, Briefcase,
   Clock, ChevronRight, X, Star, Share2, MessageSquare,
-  Trash2,
+  Trash2, Network,
 } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
 import { requirementsStore } from '../utils/requirementsStore';
@@ -161,7 +161,13 @@ const Candidates = ({ onSelectCandidate }) => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
               {list.map(c => (
-                <CandidateRow key={c.id} candidate={c} onClick={() => setModal(c)} onRemove={handleRemoveClick} />
+                <CandidateRow
+                  key={c.id}
+                  candidate={c}
+                  onClick={() => setModal(c)}
+                  onRemove={handleRemoveClick}
+                  onDeepDive={(e) => { e.stopPropagation(); onSelectCandidate(c); }}
+                />
               ))}
             </div>
           </div>
@@ -214,7 +220,7 @@ const Candidates = ({ onSelectCandidate }) => {
   );
 };
 
-const CandidateRow = ({ candidate: c, onClick, onRemove }) => (
+const CandidateRow = ({ candidate: c, onClick, onRemove, onDeepDive }) => (
   <div
     className="card card-interactive"
     onClick={onClick}
@@ -253,10 +259,34 @@ const CandidateRow = ({ candidate: c, onClick, onRemove }) => (
       </span>
     )}
 
-    {/* Match */}
-    <div style={{ textAlign: 'right', minWidth: '64px', flexShrink: 0 }}>
-      <p style={{ fontSize: '1.2rem', fontWeight: '800', color: matchColor(c.match), letterSpacing: '-0.03em' }}>{c.match}%</p>
-      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>match</p>
+    {/* Match + Intelligence Graph button */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
+      <div style={{ textAlign: 'right', minWidth: '56px' }}>
+        <p style={{ fontSize: '1.2rem', fontWeight: '800', color: matchColor(c.match), letterSpacing: '-0.03em' }}>{c.match}%</p>
+        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>match</p>
+      </div>
+
+      {/* View Intelligence Graph */}
+      <button
+        onClick={onDeepDive}
+        className="btn-outline hide-mobile"
+        title="View Intelligence Graph"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          fontSize: '0.72rem',
+          padding: '0.35rem 0.7rem',
+          flexShrink: 0,
+          borderColor: 'rgba(26,92,56,0.35)',
+          color: 'var(--primary)',
+          background: 'rgba(26,92,56,0.06)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <Network size={12} />
+        Graph
+      </button>
     </div>
 
     {/* Remove */}
