@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
 import { API_URL, getHeaders } from '../config';
+import EvaluationMetrics from './EvaluationMetrics';
 
 /* ── Section wrapper ──────────────────────────────────────────── */
 const Section = ({ title, subtitle, children }) => (
@@ -274,7 +275,10 @@ const Settings = () => {
       /* ── NLP & Parsing ── */
       case 'nlp': return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <Section title="NLP Model" subtitle="Configure the language model used for CV extraction.">
+          <Section title="NLP Model" subtitle="spaCy + NLTK (tokenization, stopwords, lemmatization) for CV extraction.">
+            <Field label="NLTK preprocessing" hint="Enabled on backend — improves skill matching.">
+              <span className="badge badge-success">Active</span>
+            </Field>
             <Field label="Active Model" hint="SpaCy model used for entity extraction.">
               <select className="input" value={nlpModel} onChange={e => setNlpModel(e.target.value)}>
                 <option value="spacy-en-sm">spacy en_core_web_sm (fast)</option>
@@ -302,6 +306,8 @@ const Settings = () => {
               <Toggle value={autoSummary} onChange={setAutoSummary} label={autoSummary ? 'Enabled' : 'Disabled'} />
             </Field>
           </Section>
+
+          <EvaluationMetrics />
         </div>
       );
 

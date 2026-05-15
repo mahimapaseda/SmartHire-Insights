@@ -4,3 +4,10 @@ spacy
 pymupdf
 neo4j
 python-docx
+nltk
+opencv-python-headless
+numpy
+librosa
+soundfile
+audioread
+fer

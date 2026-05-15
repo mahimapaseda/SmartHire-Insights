@@ -16,8 +16,9 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download the spaCy model
+# Download the spaCy model and NLTK corpora
 RUN python -m spacy download en_core_web_sm
+RUN python -c "import nltk; [nltk.download(p, quiet=True) for p in ('punkt','punkt_tab','stopwords','wordnet','averaged_perceptron_tagger','averaged_perceptron_tagger_eng')]"
 
 # Copy the rest of the application code into the container
 COPY . .

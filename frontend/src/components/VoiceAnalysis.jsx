@@ -6,27 +6,17 @@ import {
   CheckCircle2, Activity, BarChart2,
 } from 'lucide-react';
 
-/* ── Mock API ─────────────────────────────────────────────────── */
-const STRESS_LEVELS = ['Low', 'Moderate', 'High'];
-const VOCAL_TRAITS  = ['Clarity', 'Pace', 'Confidence', 'Fluency', 'Tone Variation'];
-
-const mockVoiceAnalysis = () => {
-  const stressIdx = Math.floor(Math.random() * 3);
-  const stress    = STRESS_LEVELS[stressIdx];
-  const traits    = {};
-  VOCAL_TRAITS.forEach(t => { traits[t] = Math.floor(Math.random() * 40) + 55; });
-  return {
-    stress,
-    stressScore: stressIdx === 0 ? Math.floor(Math.random() * 25) + 5
-               : stressIdx === 1 ? Math.floor(Math.random() * 25) + 35
-               : Math.floor(Math.random() * 25) + 65,
-    traits,
-    wordsPerMin: Math.floor(Math.random() * 60) + 110,
-    pauseCount:  Math.floor(Math.random() * 8) + 1,
-    duration:    `${Math.floor(Math.random() * 3) + 1}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
-    timestamp:   new Date().toLocaleTimeString(),
-    transcript:  'The candidate demonstrated clear articulation during the technical explanation phase. Some hesitation was detected around the system design question.',
-  };
+const postVoiceFile = async (file) => {
+  const form = new FormData();
+  form.append('file', file, file.name || 'recording.webm');
+  const res = await fetch(`${API_URL}/api/voice-analysis`, {
+    method: 'POST',
+    headers: getHeaders(true),
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error || 'Voice analysis failed');
+  return data.data;
 };
 
 /* ── Waveform visualiser (SVG bars) ──────────────────────────── */
@@ -96,9 +86,13 @@ const VoiceAnalysis = ({ candidate }) => {
   const [result, setResult]   = useState(null);
   const [recording, setRecording] = useState(false);
   const [audioName, setAudioName] = useState(null);
+  const [audioFile, setAudioFile] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
   const [tick, setTick]       = useState(0);
   const fileRef  = useRef();
   const timerRef = useRef();
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
 
   // Animate waveform while recording
   useEffect(() => {
@@ -114,52 +108,68 @@ const VoiceAnalysis = ({ candidate }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAudioName(file.name);
+    setAudioFile(file);
     setResult(null);
+    setAnalysisError(null);
     setStatus('idle');
   };
 
   const runAnalysis = async () => {
-    setStatus('analysing');
-    try {
-        const res = await fetch(`${API_URL}/api/voice-analysis`, { 
-          method: 'POST',
-          headers: getHeaders()
-        });
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data.data);
-      } else {
-        setResult(mockVoiceAnalysis());
-      }
-    } catch (err) {
-      setResult(mockVoiceAnalysis());
+    if (!audioFile) {
+      setAnalysisError('Upload or record audio first.');
+      return;
     }
-    setStatus('done');
+    setStatus('analysing');
+    setAnalysisError(null);
+    try {
+      const data = await postVoiceFile(audioFile);
+      setResult({ ...data, timestamp: data.timestamp || new Date().toLocaleTimeString() });
+      setStatus('done');
+    } catch (err) {
+      setAnalysisError(err.message);
+      setStatus('error');
+    }
   };
 
   const toggleRecording = async () => {
     if (recording) {
+      mediaRecorderRef.current?.stop();
       setRecording(false);
-      setStatus('analysing');
-      try {
-        const res = await fetch(`${API_URL}/api/voice-analysis`, { 
-          method: 'POST',
-          headers: getHeaders()
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setResult(data.data);
-        } else {
-          setResult(mockVoiceAnalysis());
-        }
-      } catch (err) {
-        setResult(mockVoiceAnalysis());
-      }
-      setStatus('done');
     } else {
-      setRecording(true);
-      setStatus('recording');
-      setResult(null);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        chunksRef.current = [];
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+        recorder.ondataavailable = (ev) => {
+          if (ev.data.size > 0) chunksRef.current.push(ev.data);
+        };
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const file = new File([blob], 'live-recording.webm', { type: 'audio/webm' });
+          setAudioFile(file);
+          setAudioName(file.name);
+          setStatus('analysing');
+          setAnalysisError(null);
+          try {
+            const data = await postVoiceFile(file);
+            setResult({ ...data, timestamp: data.timestamp || new Date().toLocaleTimeString() });
+            setStatus('done');
+          } catch (err) {
+            setAnalysisError(err.message);
+            setStatus('error');
+          }
+        };
+        recorder.start();
+        setRecording(true);
+        setStatus('recording');
+        setResult(null);
+        setAnalysisError(null);
+      } catch (err) {
+        setAnalysisError(err.message || 'Microphone access denied');
+        setStatus('error');
+      }
     }
   };
 
@@ -167,8 +177,13 @@ const VoiceAnalysis = ({ candidate }) => {
     setStatus('idle');
     setResult(null);
     setAudioName(null);
+    setAudioFile(null);
     setRecording(false);
+    setAnalysisError(null);
     clearInterval(timerRef.current);
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
   };
 
   const stressColor = result
@@ -177,6 +192,12 @@ const VoiceAnalysis = ({ candidate }) => {
 
   return (
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {analysisError && (
+        <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--danger)', fontSize: '0.83rem' }}>
+          {analysisError}
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>

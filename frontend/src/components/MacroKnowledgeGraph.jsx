@@ -1,14 +1,25 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
-import { Search, Filter, Users, Layers, Zap, X, Plus, RefreshCcw } from 'lucide-react';
+import { Search, Users, Layers, Zap, X, Plus, RefreshCcw, ExternalLink } from 'lucide-react';
 import { generateMacroData } from '../utils/graphDataUtils';
 import { candidateStore } from '../utils/candidateStore';
+import D3KnowledgeGraph from './D3KnowledgeGraph';
+import { API_URL, getHeaders } from '../config';
 
 const MacroKnowledgeGraph = () => {
   const [query,         setQuery]    = useState('');
+  const [viewMode,      setViewMode] = useState('force'); // 'force' | 'd3'
+  const [bloomUrl,      setBloomUrl] = useState('http://localhost:7474/browser/');
   const [selectedNodes, setSelected] = useState([]);
   const [data,          setData]     = useState(() => generateMacroData());
   const fgRef = useRef();
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/graph/export`, { headers: getHeaders() })
+      .then(r => r.json())
+      .then(d => { if (d.success && d.data?.neo4jBrowserUrl) setBloomUrl(d.data.neo4jBrowserUrl); })
+      .catch(() => {});
+  }, []);
 
   // Rebuild graph when store changes (new CVs parsed)
   useEffect(() => {
@@ -65,10 +76,39 @@ const MacroKnowledgeGraph = () => {
           />
         </div>
 
+        <div style={{ display: 'flex', gap: '0.35rem' }}>
+          <button
+            type="button"
+            className={viewMode === 'force' ? 'btn-primary' : 'btn-ghost'}
+            style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem' }}
+            onClick={() => setViewMode('force')}
+          >
+            Force Graph
+          </button>
+          <button
+            type="button"
+            className={viewMode === 'd3' ? 'btn-primary' : 'btn-ghost'}
+            style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem' }}
+            onClick={() => setViewMode('d3')}
+          >
+            D3.js
+          </button>
+        </div>
+
         <button className="btn-ghost" style={{ fontSize: '0.8rem' }}
           onClick={() => { setData(generateMacroData()); setSelected([]); fgRef.current?.zoomToFit(400, 40); }}>
           <RefreshCcw size={14} /> Refresh
         </button>
+
+        <a
+          href={bloomUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-outline"
+          style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+        >
+          <ExternalLink size={14} /> Neo4j Browser / Bloom
+        </a>
 
         {selectedNodes.length > 0 && (
           <div style={{
@@ -102,6 +142,9 @@ const MacroKnowledgeGraph = () => {
 
         {/* Canvas */}
         <div className="card" style={{ flex: 1, overflow: 'hidden', position: 'relative', padding: 0 }}>
+          {viewMode === 'd3' ? (
+            <D3KnowledgeGraph searchQuery={query} height={480} />
+          ) : (
           <ForceGraph2D
             ref={fgRef}
             graphData={filteredData}
@@ -138,6 +181,7 @@ const MacroKnowledgeGraph = () => {
             onEngineStop={() => fgRef.current?.zoomToFit(500, 40)}
             backgroundColor="transparent"
           />
+          )}
         </div>
 
         {/* Legend */}

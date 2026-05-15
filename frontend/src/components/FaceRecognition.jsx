@@ -6,8 +6,6 @@ import {
   ChevronDown, Info,
 } from 'lucide-react';
 
-/* ── Mock API response generator ─────────────────────────────── */
-const EMOTIONS = ['Neutral', 'Happy', 'Focused', 'Nervous', 'Confident', 'Surprised'];
 const EMOTION_ICONS = {
   Neutral:    { icon: Meh,           color: '#8b949e' },
   Happy:      { icon: Smile,         color: '#22c55e' },
@@ -17,30 +15,30 @@ const EMOTION_ICONS = {
   Surprised:  { icon: AlertTriangle, color: '#a855f7' },
 };
 
-const mockAnalyse = () => {
-  const dominant = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
-  const scores = {};
-  let remaining = 100;
-  EMOTIONS.forEach((e, i) => {
-    if (i === EMOTIONS.length - 1) { scores[e] = remaining; return; }
-    const v = e === dominant
-      ? Math.floor(Math.random() * 30) + 40
-      : Math.floor(Math.random() * 15);
-    scores[e] = Math.min(v, remaining);
-    remaining -= scores[e];
+const postFaceFile = async (file) => {
+  const form = new FormData();
+  form.append('file', file, file.name || 'capture.jpg');
+  const res = await fetch(`${API_URL}/api/face-analysis`, {
+    method: 'POST',
+    headers: getHeaders(true),
+    body: form,
   });
-  // Normalise so dominant is highest
-  scores[dominant] = Math.max(scores[dominant], 45);
-  const total = Object.values(scores).reduce((a, b) => a + b, 0);
-  Object.keys(scores).forEach(k => { scores[k] = Math.round((scores[k] / total) * 100); });
-  return {
-    dominant,
-    scores,
-    confidence: Math.floor(Math.random() * 15) + 82,
-    frames: Math.floor(Math.random() * 40) + 20,
-    timestamp: new Date().toLocaleTimeString(),
-  };
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error || 'Face analysis failed');
+  return data.data;
 };
+
+const captureVideoFrame = (videoEl) => new Promise((resolve, reject) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = videoEl.videoWidth || 640;
+  canvas.height = videoEl.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob(blob => {
+    if (!blob) reject(new Error('Could not capture frame'));
+    else resolve(new File([blob], 'live-frame.jpg', { type: 'image/jpeg' }));
+  }, 'image/jpeg', 0.92);
+});
 
 /* ── Timeline entry ───────────────────────────────────────────── */
 const TIMELINE = [
@@ -60,6 +58,8 @@ const FaceRecognition = ({ candidate }) => {
   const [result, setResult]     = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [liveActive, setLiveActive]     = useState(false);
+  const [imageFile, setImageFile]       = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
   const fileRef = useRef();
   const videoRef = useRef();
 
@@ -80,69 +80,60 @@ const FaceRecognition = ({ candidate }) => {
     };
   }, [liveActive]);
 
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
+  const loadImageFile = (file) => {
     if (!file) return;
+    setImageFile(file);
     const reader = new FileReader();
     reader.onload = ev => setImagePreview(ev.target.result);
     reader.readAsDataURL(file);
     setResult(null);
+    setAnalysisError(null);
     setStatus('idle');
   };
+
+  const handleFile = (e) => loadImageFile(e.target.files?.[0]);
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => setImagePreview(ev.target.result);
-    reader.readAsDataURL(file);
-    setResult(null);
-    setStatus('idle');
+    loadImageFile(e.dataTransfer.files?.[0]);
   };
 
   const runAnalysis = async () => {
-    setStatus('analysing');
-    try {
-        const res = await fetch(`${API_URL}/api/face-analysis`, { 
-          method: 'POST',
-          headers: getHeaders()
-        });
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data.data);
-      } else {
-        setResult(mockAnalyse());
-      }
-    } catch (err) {
-      setResult(mockAnalyse());
+    if (!imageFile) {
+      setAnalysisError('Upload an image with a visible face first.');
+      return;
     }
-    setStatus('done');
+    setStatus('analysing');
+    setAnalysisError(null);
+    try {
+      const data = await postFaceFile(imageFile);
+      setResult({ ...data, timestamp: data.timestamp || new Date().toLocaleTimeString() });
+      setStatus('done');
+    } catch (err) {
+      setAnalysisError(err.message);
+      setStatus('error');
+    }
   };
 
   const toggleLive = async () => {
     if (liveActive) {
       setLiveActive(false);
       setStatus('analysing');
+      setAnalysisError(null);
       try {
-        const res = await fetch(`${API_URL}/api/face-analysis`, { 
-          method: 'POST',
-          headers: getHeaders()
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setResult(data.data);
-        } else {
-          setResult(mockAnalyse());
-        }
+        if (!videoRef.current) throw new Error('No video stream');
+        const frameFile = await captureVideoFrame(videoRef.current);
+        const data = await postFaceFile(frameFile);
+        setResult({ ...data, timestamp: data.timestamp || new Date().toLocaleTimeString() });
+        setStatus('done');
       } catch (err) {
-        setResult(mockAnalyse());
+        setAnalysisError(err.message);
+        setStatus('error');
       }
-      setStatus('done');
     } else {
       setLiveActive(true);
-      setStatus('analysing');
       setResult(null);
+      setAnalysisError(null);
     }
   };
 
@@ -150,13 +141,21 @@ const FaceRecognition = ({ candidate }) => {
     setStatus('idle');
     setResult(null);
     setImagePreview(null);
+    setImageFile(null);
     setLiveActive(false);
+    setAnalysisError(null);
   };
 
   const dominantMeta = result ? EMOTION_ICONS[result.dominant] : null;
 
   return (
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {analysisError && (
+        <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--danger)', fontSize: '0.83rem' }}>
+          {analysisError}
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>

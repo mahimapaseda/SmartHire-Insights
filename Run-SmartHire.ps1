@@ -79,6 +79,9 @@ if (Test-Path $BackendDir) {
         & $PythonExe -m spacy download en_core_web_sm
     }
 
+    Write-Host "  Ensuring NLTK corpora are installed..." -ForegroundColor Gray
+    & $PythonExe -c "import nltk; [nltk.download(p, quiet=True) for p in ('punkt','punkt_tab','stopwords','wordnet','averaged_perceptron_tagger','averaged_perceptron_tagger_eng')]"
+
     # Start Backend Server
     $VenvActivate = Join-Path $VenvDir "Scripts\Activate.ps1"
     if (Test-Path $VenvActivate) {

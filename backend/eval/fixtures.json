@@ -1,0 +1,32 @@
+[
+  {
+    "id": "sample_1",
+    "text": "John Smith\njohn.smith@email.com\n+1 555 123 4567\n\nSkills: Python, React, Docker, AWS, Git\n\nExperience\nSoftware Engineer at Acme Technologies Ltd\nJan 2020 - Present\n\nEducation\nBachelor of Science in Computer Science\nState University 2019",
+    "expected": {
+      "email": "john.smith@email.com",
+      "skills": ["Python", "React", "Docker", "AWS", "Git"],
+      "has_experience": true,
+      "has_education": true
+    }
+  },
+  {
+    "id": "sample_2",
+    "text": "Maria Garcia\nmaria.garcia@corp.io\n\nTechnical Skills\nJava, Spring Boot, SQL, Kubernetes, Agile\n\nWork Experience\nData Analyst at Global Solutions Inc\n2018 - 2022\n\nEducation\nMaster of Science in Data Science\nTech Institute 2018",
+    "expected": {
+      "email": "maria.garcia@corp.io",
+      "skills": ["Java", "Spring Boot", "SQL", "Kubernetes", "Agile"],
+      "has_experience": true,
+      "has_education": true
+    }
+  },
+  {
+    "id": "sample_3",
+    "text": "Alex Chen\nalex@startup.dev\nSkills: TypeScript, Node.js, MongoDB, CI/CD\nFrontend Developer at Web Agency\n2021 - Present",
+    "expected": {
+      "email": "alex@startup.dev",
+      "skills": ["TypeScript", "Node.js", "MongoDB", "CI/CD"],
+      "has_experience": true,
+      "has_education": false
+    }
+  }
+]

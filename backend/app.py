@@ -59,6 +59,9 @@ import docx
 from functools import wraps
 import logging
 
+from nlp_preprocess import normalize_for_match, skill_in_text, text_to_lemma_set, preprocess_cv_text
+from behavioral_analysis import analyze_face_image, analyze_voice_audio
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -481,12 +484,11 @@ skills_database = [
 def extract_skills(text):
 
     found_skills = []
-    text_lower   = text.lower()
+    text_lower   = normalize_for_match(text)
+    lemma_set    = text_to_lemma_set(text)
 
     for skill in skills_database:
-        pattern = r'\b' + re.escape(skill.lower()) + r'\b'
-        if re.search(pattern, text_lower):
-            # Normalize to the case found in our database
+        if skill_in_text(skill, text_lower, lemma_set):
             found_skills.append(skill)
 
     return sorted(set(found_skills))
@@ -953,57 +955,114 @@ def neo4j_status():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-import random
+def _run_text_extraction(text: str) -> dict:
+    """Run full NLP pipeline on plain text (used by eval harness)."""
+    text = preprocess_cv_text(text)
+    education_section = extract_section(
+        text,
+        ["Education", "Academic Qualifications", "Educational Qualifications"],
+    )
+    experience_section = extract_section(
+        text,
+        ["Experience", "Work Experience", "Professional Experience"],
+    )
+    return {
+        "email": extract_email(text),
+        "skills": extract_skills(text),
+        "education": extract_education(
+            education_section if education_section.strip() else text
+        ),
+        "experience": extract_experience(
+            experience_section if experience_section.strip() else text
+        ),
+    }
+
 
 @app.route('/api/face-analysis', methods=['POST'])
 @require_api_key
 def face_analysis():
-    # Dynamic placeholder for actual Face Emotion Recognition
-    emotions = ["Confident", "Focused", "Neutral", "Happy", "Nervous"]
-    weights = [40, 30, 15, 10, 5]
-    dominant = random.choices(emotions, weights=weights)[0]
-    
-    scores = {e: random.randint(5, 15) for e in emotions}
-    scores[dominant] = random.randint(40, 70)
-    # Normalise
-    total = sum(scores.values())
-    scores = {k: round((v/total)*100) for k, v in scores.items()}
-    
-    return jsonify({
-        "success": True, 
-        "data": {
-            "dominant": dominant,
-            "scores": scores,
-            "confidence": random.randint(85, 95),
-            "frames": random.randint(24, 60)
-        }
-    }), 200
+    if 'file' not in request.files or not request.files['file'].filename:
+        return jsonify({"success": False, "error": "Upload an image file (JPG, PNG, WEBP)."}), 400
+    uploaded = request.files['file']
+    allowed = ('.jpg', '.jpeg', '.png', '.webp', '.bmp')
+    if not uploaded.filename.lower().endswith(allowed):
+        return jsonify({"success": False, "error": "Unsupported image type."}), 400
+    try:
+        result = analyze_face_image(uploaded.read())
+        result["timestamp"] = __import__("datetime").datetime.utcnow().isoformat() + "Z"
+        return jsonify({"success": True, "data": result}), 200
+    except Exception as e:
+        logger.error("Face analysis failed: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 400
+
 
 @app.route('/api/voice-analysis', methods=['POST'])
 @require_api_key
 def voice_analysis():
-    # Dynamic placeholder for actual Voice Stress Detection
-    stress_levels = ["Low", "Moderate", "High"]
-    stress = random.choices(stress_levels, weights=[70, 20, 10])[0]
-    stress_score = random.randint(10, 30) if stress == "Low" else random.randint(31, 60) if stress == "Moderate" else random.randint(61, 90)
-    
+    if 'file' not in request.files or not request.files['file'].filename:
+        return jsonify({"success": False, "error": "Upload an audio file (WAV, MP3, OGG, WEBM, M4A)."}), 400
+    uploaded = request.files['file']
+    allowed = ('.wav', '.mp3', '.ogg', '.webm', '.m4a', '.flac')
+    if not uploaded.filename.lower().endswith(allowed):
+        return jsonify({"success": False, "error": "Unsupported audio type."}), 400
+    try:
+        result = analyze_voice_audio(uploaded.read(), uploaded.filename)
+        result["timestamp"] = __import__("datetime").datetime.utcnow().isoformat() + "Z"
+        return jsonify({"success": True, "data": result}), 200
+    except Exception as e:
+        logger.error("Voice analysis failed: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/api/eval/metrics', methods=['GET'])
+@require_api_key
+def eval_metrics():
+    from eval.metrics import run_extraction_eval
+    try:
+        report = run_extraction_eval(_run_text_extraction)
+        return jsonify({"success": True, "data": report}), 200
+    except Exception as e:
+        logger.error("Eval failed: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/graph/export', methods=['GET'])
+@require_api_key
+def graph_export():
+    """Export graph snapshot + Neo4j Browser / Bloom entry points."""
+    bloom_base = os.getenv("NEO4J_BLOOM_URL", "http://localhost:7474/browser/")
+    cypher = (
+        "MATCH (c:Candidate)-[r]->(n) "
+        "RETURN c, r, n LIMIT 300"
+    )
+    nodes, links = [], []
+    try:
+        with driver.session() as session:
+            result = session.run("""
+                MATCH (c:Candidate)
+                OPTIONAL MATCH (c)-[:HAS_SKILL]->(s:Skill)
+                RETURN c.id AS cid, c.name AS cname, collect(DISTINCT s.name) AS skills
+            """)
+            for rec in result:
+                cid = rec["cid"]
+                nodes.append({"id": cid, "label": rec["cname"], "type": "Candidate"})
+                for skill in rec["skills"] or []:
+                    sid = f"skill_{skill}"
+                    if not any(n["id"] == sid for n in nodes):
+                        nodes.append({"id": sid, "label": skill, "type": "Skill"})
+                    links.append({"source": cid, "target": sid, "type": "HAS_SKILL"})
+    except Exception as e:
+        logger.warning("Graph export partial failure: %s", e)
+
     return jsonify({
-        "success": True, 
+        "success": True,
         "data": {
-            "stress": stress,
-            "stressScore": stress_score,
-            "traits": {
-                "Clarity": random.randint(70, 95),
-                "Pace": random.randint(60, 85),
-                "Confidence": random.randint(75, 98),
-                "Fluency": random.randint(70, 90),
-                "Tone Variation": random.randint(60, 80)
-            },
-            "wordsPerMin": random.randint(120, 160),
-            "pauseCount": random.randint(1, 5),
-            "duration": f"{random.randint(1, 3)}:{random.randint(10, 59):02d}",
-            "transcript": "Candidate provided detailed technical explanations with consistent vocal delivery."
-        }
+            "nodes": nodes,
+            "links": links,
+            "cypher": cypher,
+            "neo4jBrowserUrl": bloom_base,
+            "bloomHint": "Open Neo4j Browser or Bloom and run the provided Cypher to explore the live graph.",
+        },
     }), 200
 
 @app.route('/api/reset-graph', methods=['DELETE'])
@@ -1071,6 +1130,8 @@ def upload_cv():
                 extracted_text = extract_text_from_pdf(f)
             else:
                 extracted_text = extract_text_from_docx(f)
+
+        extracted_text = preprocess_cv_text(extracted_text)
 
         # Extract sections
         education_section = extract_section(

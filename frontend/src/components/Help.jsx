@@ -5,6 +5,7 @@ import {
   ExternalLink, MessageCircle, Mail,
   CheckCircle2, AlertTriangle, Zap, Database,
 } from 'lucide-react';
+import EvaluationMetrics from './EvaluationMetrics';
 
 /* ── FAQ data ─────────────────────────────────────────────────── */
 const FAQS = [
@@ -22,15 +23,15 @@ const FAQS = [
   },
   {
     q: 'What does the Knowledge Graph show?',
-    a: 'The Graph Search page shows a force-directed graph of all candidates and their top skills. Nodes are connected by HAS_SKILL relationships. Click a candidate node to select it, then click another to compare shared skills.',
+    a: 'Graph Search offers Force Graph and D3.js views of candidates and skills, plus a link to Neo4j Browser/Bloom for the live database graph.',
   },
   {
     q: 'How does Face Recognition work?',
-    a: 'Upload an interview screenshot or video clip, or use the live camera mode. The system calls the Facial Emotion Recognition API and returns emotion scores across 6 categories: Neutral, Happy, Focused, Nervous, Confident, and Surprised.',
+    a: 'Upload an interview screenshot or use live camera mode. The backend runs OpenCV + FER on your image and returns emotion scores (Confident, Focused, Neutral, Happy, Nervous).',
   },
   {
     q: 'How does Voice Stress Detection work?',
-    a: 'Upload an audio or video file, or record live. The Voice Stress API analyses vocal patterns and returns a stress score (0–100), words-per-minute, pause count, and trait scores for Clarity, Pace, Confidence, Fluency, and Tone Variation.',
+    a: 'Upload audio or record live. Librosa acoustic analysis returns stress score (0–100), words-per-minute, pause count, and trait scores for Clarity, Pace, Confidence, Fluency, and Tone Variation.',
   },
   {
     q: 'Why is the backend showing "Not connected"?',
@@ -226,6 +227,12 @@ const Help = () => {
         </div>
       </div>
 
+      {/* Evaluation metrics */}
+      <div id="evaluation">
+        <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem' }}>Pipeline Evaluation (P/R/F1)</h3>
+        <EvaluationMetrics />
+      </div>
+
       {/* System status */}
       <div>
         <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem' }}>System Status</h3>
@@ -235,8 +242,10 @@ const Help = () => {
               { label: 'Frontend (React)',         status: 'online',  note: 'Running on localhost:5173' },
               { label: 'Python Flask Backend',     status: 'offline', note: 'Not started — run python app.py' },
               { label: 'Neo4j Graph Database',     status: 'offline', note: 'Not connected — configure in Settings' },
-              { label: 'FER API',                  status: 'mock',    note: 'Mock mode — connect backend to enable' },
-              { label: 'Voice Stress API',         status: 'mock',    note: 'Mock mode — connect backend to enable' },
+              { label: 'FER (OpenCV + FER)',       status: 'online',  note: 'Real analysis via POST /api/face-analysis' },
+              { label: 'Voice Stress (librosa)',   status: 'online',  note: 'Real acoustics via POST /api/voice-analysis' },
+              { label: 'NLTK preprocessing',     status: 'online',  note: 'Tokenization & lemmatization in CV pipeline' },
+              { label: 'D3.js visualization',      status: 'online',  note: 'Graph Search → D3.js tab' },
             ].map(s => (
               <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div>
