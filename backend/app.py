@@ -68,7 +68,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(","))
+# Allow both localhost and 127.0.0.1 to prevent common CORS fetch errors
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
 
 # =========================================================
 # SECURITY CONFIG
