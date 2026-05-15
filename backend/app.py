@@ -280,12 +280,20 @@ def init_db():
         "CREATE INDEX skill_name_idx IF NOT EXISTS FOR (s:Skill) ON (s.name)",
         "CREATE INDEX company_name_idx IF NOT EXISTS FOR (co:Company) ON (co.name)",
         "CREATE INDEX inst_name_idx IF NOT EXISTS FOR (i:Institution) ON (i.name)",
+        "CREATE INDEX req_id_idx IF NOT EXISTS FOR (r:Requirement) ON (r.id)",
     ]
     try:
         with driver.session() as session:
             for q in queries:
                 session.run(q)
         logger.info("DB constraints and indexes verified/created.")
+        # Backfill isActive=true on any legacy Requirement nodes that lack the property
+        with driver.session() as session:
+            session.run("""
+                MATCH (r:Requirement)
+                WHERE r.isActive IS NULL
+                SET r.isActive = true
+            """)
     except Exception as e:
         logger.warning(f"Constraint/index creation skipped: {e}")
 
@@ -326,59 +334,62 @@ def extract_text_from_docx(file_stream):
 
 def calculate_match_score(skills):
     """
-    Intelligently calculate match score against active requirements.
-    Uses spaCy similarity (if model supports it) or semantic grouping.
+    Calculate match score against ACTIVE requirements only.
+    Base 40 + weighted exact match % + category bonus.
     """
     try:
         req_skills = set()
         with driver.session() as session:
-            result = session.run("MATCH (s:Skill)<-[:REQUIRES_SKILL]-(r:Requirement) RETURN collect(DISTINCT s.name) as skills")
+            # Only pull skills from ACTIVE requirements
+            result = session.run("""
+                MATCH (s:Skill)<-[:REQUIRES_SKILL]-(r:Requirement)
+                WHERE coalesce(r.isActive, true) = true
+                RETURN collect(DISTINCT s.name) as skills
+            """)
             record = result.single()
             if record and record["skills"]:
                 req_skills = set(record["skills"])
-        
-        # Fallback if no requirements exist in DB
+
+        # Fallback if no active requirements exist in DB
         if not req_skills:
             req_skills = {"React", "Python", "Node.js", "AWS", "Docker", "NLP", "Java", "TypeScript", "SQL", "Git"}
-            
+
         skill_set = set(skills)
-        
-        # 1. Direct Intersection (Exact matches)
+
+        # 1. Direct exact match
         matches = skill_set.intersection(req_skills)
         match_count = len(matches)
-        
-        # 2. Category-based matching (e.g. 'React' matches 'Frontend')
-        # This is a simplified version of semantic matching
+
+        # 2. Category-based partial match
         categories = {
-            "Frontend": {"React", "Angular", "Vue", "JavaScript", "TypeScript", "HTML", "CSS", "Tailwind", "Next.js"},
-            "Backend": {"Python", "Django", "Flask", "Node.js", "Express", "Java", "Spring Boot", "Go", "Rust"},
-            "Data Science": {"Machine Learning", "Deep Learning", "NLP", "TensorFlow", "PyTorch", "Scikit-learn", "Data Analysis"},
-            "DevOps": {"Docker", "Kubernetes", "AWS", "Azure", "Google Cloud", "CI/CD", "Git", "Linux"},
-            "Database": {"SQL", "PostgreSQL", "MySQL", "MongoDB", "Neo4j", "Redis"}
+            "Frontend": {"React", "Angular", "Vue", "JavaScript", "TypeScript", "HTML", "CSS", "Tailwind", "Next.js", "Svelte"},
+            "Backend": {"Python", "Django", "Flask", "FastAPI", "Node.js", "Express", "Java", "Spring Boot", "Go", "Rust", "PHP"},
+            "Data Science": {"Machine Learning", "Deep Learning", "NLP", "TensorFlow", "PyTorch", "Scikit-learn", "Data Analysis", "Pandas", "NumPy"},
+            "DevOps": {"Docker", "Kubernetes", "AWS", "Azure", "Google Cloud", "CI/CD", "Git", "Linux", "Terraform", "Ansible"},
+            "Database": {"SQL", "PostgreSQL", "MySQL", "MongoDB", "Neo4j", "Redis", "Supabase", "Firebase"},
+            "QA": {"Selenium", "Postman", "Manual Testing", "Automation Testing", "Jira", "Bug Tracking", "Cucumber"},
         }
-        
+
         category_overlap = 0
         for cat, items in categories.items():
             if skill_set.intersection(items) and req_skills.intersection(items):
                 category_overlap += 1
-        
-        base_score = 55
-        if not req_skills:
-            # Weighted score: Exact matches + Bonus for variety
-            score = base_score + (match_count * 4) + (category_overlap * 3)
-        else:
-            # Percentage-based match if we have requirements
-            match_pct = (match_count / len(req_skills)) * 45
-            cat_bonus = (category_overlap / len(categories)) * 10
+
+        base_score = 40  # calibrated: zero-match candidate gets ~40
+        if req_skills:
+            match_pct = (match_count / max(len(req_skills), 1)) * 45
+            cat_bonus  = (category_overlap / len(categories)) * 10
             score = base_score + match_pct + cat_bonus
-            
-        # Add small bonus for variety of skills
-        score += min(len(skills) // 2, 8)
-        
+        else:
+            score = base_score + (match_count * 4) + (category_overlap * 3)
+
+        # Small bonus for breadth of skills (capped)
+        score += min(len(skills) // 3, 5)
+
         return min(round(score), 99)
     except Exception as e:
         logger.warning(f"calculate_match_score fallback triggered: {e}")
-        return 75
+        return 65
 # EXTRACT EMAIL
 # =========================================================
 
@@ -432,14 +443,20 @@ def extract_name(text):
                 return candidate_name.title()
 
     # Strategy 2: First line analysis (common in professional resumes)
+    job_title_words = {
+        "engineer", "developer", "analyst", "manager", "consultant",
+        "intern", "trainee", "lead", "architect", "designer", "officer",
+        "director", "coordinator", "specialist", "technician", "administrator",
+        "assistant", "associate", "executive", "head", "chief",
+    }
     for line in lines[:5]:
-        # Skip if it looks like a header or contact info
         if any(kw in line.lower() for kw in blacklist) or "@" in line or re.search(r'\d', line):
             continue
-            
         words = line.split()
         if 2 <= len(words) <= 4:
-            # Check if it's not a common word and doesn't have numbers
+            # Reject if any word is a job title keyword
+            if any(w.lower() in job_title_words for w in words):
+                continue
             if line.lower() not in blacklist and not re.search(r'\d', line):
                 return line.title()
 
@@ -462,21 +479,45 @@ def extract_name(text):
 # =========================================================
 
 skills_database = [
+    # Programming Languages
     "Python", "Java", "C", "C++", "C#", "Ruby", "Go", "Rust", "Swift",
-    "Kotlin", "PHP", "R", "MATLAB", "Scala", "Perl",
+    "Kotlin", "PHP", "R", "MATLAB", "Scala", "Perl", "TypeScript", "JavaScript",
+    "Dart", "Elixir", "Haskell", "Lua", "Groovy",
+    # Databases
     "SQL", "MySQL", "PostgreSQL", "MongoDB", "SQLite", "Oracle", "Redis",
+    "Cassandra", "DynamoDB", "Firebase", "Supabase", "Neo4j", "Elasticsearch",
+    "MariaDB", "CouchDB", "InfluxDB",
+    # AI / ML / Data
     "Machine Learning", "Deep Learning", "NLP", "Computer Vision",
     "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "OpenCV",
     "Data Analysis", "Data Science", "Statistics", "Data Visualization",
-    "React", "Angular", "Vue", "JavaScript", "TypeScript", "Node.js",
-    "HTML", "CSS", "Bootstrap", "Tailwind", "Next.js",
-    "Django", "Flask", "FastAPI", "Spring Boot", "Express",
+    "Pandas", "NumPy", "Matplotlib", "Seaborn", "Hugging Face",
+    "LangChain", "OpenAI API", "Generative AI", "Prompt Engineering",
+    "Spark", "Hadoop", "Kafka",
+    # Frontend
+    "React", "Angular", "Vue", "Next.js", "Nuxt.js", "Svelte",
+    "HTML", "CSS", "Bootstrap", "Tailwind", "Material UI", "Ant Design",
+    "Redux", "GraphQL", "REST API", "tRPC", "Webpack", "Vite",
+    # Backend
+    "Django", "Flask", "FastAPI", "Spring Boot", "Express", "NestJS",
+    "Laravel", "Ruby on Rails", "ASP.NET", "Actix", "Gin",
+    # DevOps / Cloud
     "AWS", "Azure", "Google Cloud", "Cloud Computing", "Docker", "Kubernetes",
     "Git", "Linux", "Bash", "Agile", "Scrum", "DevOps", "CI/CD",
-    "Streamlit", "Power BI", "Tableau", "Excel",
-    "Artificial Intelligence", "Neo4j", "Spark", "Hadoop",
-    "Selenium", "Postman", "QA", "Manual Testing", "Automation Testing", 
-    "Jira", "SDLC", "STLC", "Software Testing", "Bug Tracking", "Cucumber"
+    "Terraform", "Ansible", "Jenkins", "GitHub Actions", "GitLab CI",
+    "Nginx", "Apache", "Prometheus", "Grafana",
+    # BI / Analytics
+    "Power BI", "Tableau", "Excel", "Streamlit", "Looker",
+    # Mobile
+    "React Native", "Flutter", "Android", "iOS", "Ionic",
+    # Testing / QA
+    "Selenium", "Postman", "QA", "Manual Testing", "Automation Testing",
+    "Jira", "SDLC", "STLC", "Software Testing", "Bug Tracking",
+    "Cucumber", "Cypress", "Jest", "Pytest", "JUnit",
+    # General
+    "Artificial Intelligence", "Blockchain", "IoT", "Microservices",
+    "System Design", "OOP", "Design Patterns", "SOLID", "Clean Code",
+    "Prisma", "TypeORM", "SQLAlchemy",
 ]
 
 
@@ -664,7 +705,7 @@ def extract_experience(text):
         r"(Research\s+Engineer)",
         r"(Consultant)",
         r"(Technical\s+Consultant)",
-        r"(Intern)",
+        r"((?:QA\s+)?(?:Software\s+)?Intern(?:ship)?(?:\s+[A-Za-z]+)?)",
         r"(Graduate\s+Trainee)",
         r"(Trainee\s+[A-Za-z\s]+)",
         r"(Director\s+of\s+[A-Za-z\s]+)",
@@ -908,10 +949,10 @@ def store_candidate_in_neo4j(candidate_id, name, email, phone,
                 duration = exp.get("duration", "Unknown Duration").strip()
 
                 session.run("""
-                    MATCH  (c:Candidate {id:      $id})
-                    MERGE  (j:JobRole   {title:   $title})
+                    MATCH  (c:Candidate {id: $id})
+                    MERGE  (j:JobRole {title: $title, candidate_id: $id})
                     SET    j.duration = $duration
-                    MERGE  (co:Company  {name:    $company})
+                    MERGE  (co:Company  {name: $company})
                     MERGE  (c)-[:WORKED_AS]->(j)
                     MERGE  (j)-[:AT_COMPANY]->(co)
                 """, id=candidate_id, title=title,
@@ -1524,6 +1565,6 @@ def delete_candidate(candidate_id):
 
 
 if __name__ == '__main__':
-    debug_mode = True
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     logger.info(f"Starting Flask API Server on port 5000 (debug={debug_mode})...")
     app.run(debug=debug_mode, port=5000, host="0.0.0.0")
