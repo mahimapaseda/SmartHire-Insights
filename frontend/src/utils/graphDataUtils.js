@@ -28,40 +28,50 @@ export const generateCandidateData = (candidateId) => {
 // ── Macro graph — built from live candidate store ─────────────────────────────
 export const generateMacroData = () => {
   const candidates = candidateStore.getAll();
-
-  // Collect all unique skills across all candidates
-  const skillMap = new Map();
-  candidates.forEach(c => {
-    c.skills.forEach(s => {
-      if (!skillMap.has(s)) skillMap.set(s, `skill_${skillMap.size}`);
-    });
-  });
-
-  // Limit to top 8 skills by frequency
-  const skillFreq = new Map();
-  candidates.forEach(c => c.skills.forEach(s => skillFreq.set(s, (skillFreq.get(s) || 0) + 1)));
-  const topSkills = [...skillFreq.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([s]) => s);
-
-  const skillNodes = topSkills.map((s, i) => ({
-    id: `s_${i}`, label: s, type: 'Skill', color: '#22c55e', val: 10,
-  }));
-
-  const candidateNodes = candidates.map(c => ({
-    id: `c_${c.id}`, label: c.name, type: 'Candidate', color: '#1a5c38', val: 15,
-  }));
-
+  const nodes = [];
   const links = [];
+  const nodeMap = new Map();
+
+  const addNode = (id, label, type, color, val) => {
+    if (!nodeMap.has(id)) {
+      const node = { id, label, type, color, val };
+      nodes.push(node);
+      nodeMap.set(id, node);
+      return node;
+    }
+    return nodeMap.get(id);
+  };
+
   candidates.forEach(c => {
+    const cId = `c_${c.id}`;
+    addNode(cId, c.name, 'Candidate', '#1a5c38', 18);
+
+    // Skills
     c.skills.forEach(s => {
-      const skillNode = skillNodes.find(n => n.label === s);
-      if (skillNode) {
-        links.push({ source: `c_${c.id}`, target: skillNode.id, type: 'HAS_SKILL' });
-      }
+      const sId = `s_${s}`;
+      addNode(sId, s, 'Skill', '#22c55e', 10);
+      links.push({ source: cId, target: sId, type: 'HAS_SKILL' });
     });
+
+    // Education
+    if (c.education) {
+      const parts = c.education.split(',');
+      const degreeName = parts[0]?.trim();
+      const instName = parts[1]?.trim();
+
+      if (degreeName) {
+        const dId = `d_${degreeName}`;
+        addNode(dId, degreeName, 'Degree', '#8b5cf6', 12);
+        links.push({ source: cId, target: dId, type: 'HAS_EDUCATION' });
+
+        if (instName) {
+          const iId = `i_${instName}`;
+          addNode(iId, instName, 'Institution', '#f59e0b', 14);
+          links.push({ source: dId, target: iId, type: 'STUDIED_AT' });
+        }
+      }
+    }
   });
 
-  return { nodes: [...candidateNodes, ...skillNodes], links };
+  return { nodes, links };
 };

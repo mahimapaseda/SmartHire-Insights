@@ -16,7 +16,7 @@ import Help from '../components/Help';
 import RequirementsImport from '../components/RequirementsImport';
 import { candidateStore } from '../utils/candidateStore';
 import { notificationStore } from '../utils/notificationStore';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Network } from 'lucide-react';
 
 const PAGE_TITLES = {
   dashboard:     { title: 'Dashboard',          sub: 'AI-powered recruitment intelligence.' },
@@ -146,6 +146,13 @@ const Dashboard = () => {
                 </button>
                 <button className="btn-outline" onClick={() => goTo('requirements')}>
                   Import Data
+                </button>
+              </div>
+            )}
+            {!selectedCandidate && activeTab === 'candidates' && (
+              <div style={{ display: 'flex', gap: '0.625rem' }}>
+                <button className="btn-primary" onClick={() => goTo('search')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Network size={16} /> View Intelligence Graph
                 </button>
               </div>
             )}

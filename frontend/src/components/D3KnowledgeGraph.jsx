@@ -6,30 +6,31 @@ import { candidateStore } from '../utils/candidateStore';
 /**
  * D3.js force-directed knowledge graph (project doc: D3 visualization).
  */
-const D3KnowledgeGraph = ({ width = 800, height = 520, searchQuery = '' }) => {
+const D3KnowledgeGraph = ({ width = 800, height = 520, searchQuery = '', graphData }) => {
   const svgRef = useRef(null);
   const simRef = useRef(null);
-  const [data, setData] = React.useState(() => generateMacroData());
+  const [internalData, setInternalData] = React.useState(() => generateMacroData());
 
   useEffect(() => {
-    return candidateStore.subscribe(() => setData(generateMacroData()));
+    return candidateStore.subscribe(() => setInternalData(generateMacroData()));
   }, []);
 
+  const data = graphData || internalData;
+
   const filtered = useMemo(() => {
+    // If graphData is passed from parent, it's already filtered/dimmed
+    if (graphData) return graphData;
+
     if (!searchQuery) return data;
     const q = searchQuery.toLowerCase();
     const match = new Set(
       data.nodes.filter(n => n.label.toLowerCase().includes(q)).map(n => n.id),
     );
     return {
-      nodes: data.nodes.map(n => ({ ...n, dim: !match.has(n.id) })),
-      links: data.links.filter(
-        l => match.has(l.source) || match.has(l.target) ||
-          match.has(typeof l.source === 'object' ? l.source.id : l.source) ||
-          match.has(typeof l.target === 'object' ? l.target.id : l.target),
-      ),
+      nodes: data.nodes.map(n => ({ ...n, _dim: !match.has(n.id) })),
+      links: data.links
     };
-  }, [data, searchQuery]);
+  }, [data, searchQuery, graphData]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
@@ -81,8 +82,8 @@ const D3KnowledgeGraph = ({ width = 800, height = 520, searchQuery = '' }) => {
 
     node.append('circle')
       .attr('r', d => Math.sqrt(d.val || 10) * 1.6)
-      .attr('fill', d => (d.dim ? 'rgba(128,128,128,0.2)' : d.color))
-      .attr('stroke', d => (d.dim ? 'transparent' : 'rgba(255,255,255,0.25)'))
+      .attr('fill', d => (d._dim ? 'rgba(128,128,128,0.2)' : d.color))
+      .attr('stroke', d => (d._dim ? 'transparent' : 'rgba(255,255,255,0.25)'))
       .attr('stroke-width', 1.5);
 
     node.append('text')
@@ -90,7 +91,7 @@ const D3KnowledgeGraph = ({ width = 800, height = 520, searchQuery = '' }) => {
       .attr('x', d => Math.sqrt(d.val || 10) * 1.6 + 4)
       .attr('y', 4)
       .attr('font-size', '10px')
-      .attr('fill', d => (d.dim ? 'var(--text-muted)' : 'var(--text-primary)'))
+      .attr('fill', d => (d._dim ? 'var(--text-muted)' : 'var(--text-primary)'))
       .attr('font-family', 'Inter, sans-serif');
 
     simulation.on('tick', () => {

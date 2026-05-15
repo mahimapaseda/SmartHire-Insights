@@ -1082,19 +1082,53 @@ def graph_export():
     nodes, links = [], []
     try:
         with driver.session() as session:
+            # 1. Fetch Candidates and their relationships
             result = session.run("""
                 MATCH (c:Candidate)
-                OPTIONAL MATCH (c)-[:HAS_SKILL]->(s:Skill)
-                RETURN c.id AS cid, c.name AS cname, collect(DISTINCT s.name) AS skills
+                OPTIONAL MATCH (c)-[r:HAS_SKILL|WORKED_AS|HAS_EDUCATION]->(target)
+                RETURN c, type(r) as relType, target
             """)
+            
+            node_ids = set()
             for rec in result:
-                cid = rec["cid"]
-                nodes.append({"id": cid, "label": rec["cname"], "type": "Candidate"})
-                for skill in rec["skills"] or []:
-                    sid = f"skill_{skill}"
-                    if not any(n["id"] == sid for n in nodes):
-                        nodes.append({"id": sid, "label": skill, "type": "Skill"})
-                    links.append({"source": cid, "target": sid, "type": "HAS_SKILL"})
+                c = rec["c"]
+                if c["id"] not in node_ids:
+                    nodes.append({"id": c["id"], "label": c["name"], "type": "Candidate", "color": "#1a5c38"})
+                    node_ids.add(c["id"])
+                
+                target = rec["target"]
+                rel_type = rec["relType"]
+                
+                if target and rel_type:
+                    t_id = target.get("id") or f"node_{id(target)}"
+                    t_label = target.get("name") or target.get("title") or "Unknown"
+                    t_type = list(target.labels)[0] if target.labels else "Entity"
+                    
+                    if t_id not in node_ids:
+                        # Color coding based on type
+                        color = "#22c55e" # Skill (default)
+                        if t_type == "Company": color = "#ef4444"
+                        elif t_type == "Institution": color = "#f59e0b"
+                        elif t_type == "JobRole": color = "#3b82f6"
+                        elif t_type == "Degree": color = "#8b5cf6"
+                        
+                        nodes.append({"id": t_id, "label": t_label, "type": t_type, "color": color})
+                        node_ids.add(t_id)
+                    
+                    links.append({"source": c["id"], "target": t_id, "type": rel_type})
+
+            # 2. Fetch secondary relationships (e.g. JobRole -> Company)
+            sec_result = session.run("""
+                MATCH (n1)-[r:AT_COMPANY|STUDIED_AT]->(n2)
+                RETURN n1, type(r) as relType, n2
+            """)
+            for rec in sec_result:
+                n1, n2, rel_type = rec["n1"], rec["n2"], rec["relType"]
+                id1, id2 = n1.get("id") or f"node_{id(n1)}", n2.get("id") or f"node_{id(n2)}"
+                
+                if id1 in node_ids and id2 in node_ids:
+                    links.append({"source": id1, "target": id2, "type": rel_type})
+
     except Exception as e:
         logger.warning("Graph export partial failure: %s", e)
 

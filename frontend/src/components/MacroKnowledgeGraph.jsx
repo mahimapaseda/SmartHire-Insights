@@ -8,7 +8,7 @@ import { API_URL, getHeaders } from '../config';
 
 const MacroKnowledgeGraph = () => {
   const [query,         setQuery]    = useState('');
-  const [viewMode,      setViewMode] = useState('force'); // 'force' | 'd3'
+  const [viewMode,      setViewMode] = useState('d3'); // 'force' | 'd3'
   const [bloomUrl,      setBloomUrl] = useState('http://localhost:7474/browser/');
   const [selectedNodes, setSelected] = useState([]);
   const [data,          setData]     = useState(() => generateMacroData());
@@ -17,7 +17,14 @@ const MacroKnowledgeGraph = () => {
   useEffect(() => {
     fetch(`${API_URL}/api/graph/export`, { headers: getHeaders() })
       .then(r => r.json())
-      .then(d => { if (d.success && d.data?.neo4jBrowserUrl) setBloomUrl(d.data.neo4jBrowserUrl); })
+      .then(d => {
+        if (d.success) {
+          if (d.data?.neo4jBrowserUrl) setBloomUrl(d.data.neo4jBrowserUrl);
+          if (d.data?.nodes && d.data.nodes.length > 0) {
+            setData({ nodes: d.data.nodes, links: d.data.links });
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -143,7 +150,7 @@ const MacroKnowledgeGraph = () => {
         {/* Canvas */}
         <div className="card" style={{ flex: 1, overflow: 'hidden', position: 'relative', padding: 0 }}>
           {viewMode === 'd3' ? (
-            <D3KnowledgeGraph searchQuery={query} height={480} />
+            <D3KnowledgeGraph graphData={filteredData} searchQuery={query} height={480} />
           ) : (
           <ForceGraph2D
             ref={fgRef}
@@ -193,6 +200,10 @@ const MacroKnowledgeGraph = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             <LegendItem color="#1a5c38" label="Candidates" count={candidateCount} />
             <LegendItem color="#22c55e" label="Skills"     count={skillCount} />
+            <LegendItem color="#3b82f6" label="Roles"      count={data.nodes.filter(n => n.type === 'JobRole').length} />
+            <LegendItem color="#ef4444" label="Companies"  count={data.nodes.filter(n => n.type === 'Company').length} />
+            <LegendItem color="#8b5cf6" label="Degrees"    count={data.nodes.filter(n => n.type === 'Degree').length} />
+            <LegendItem color="#f59e0b" label="Institutes" count={data.nodes.filter(n => n.type === 'Institution').length} />
           </div>
 
           <div className="divider" />
