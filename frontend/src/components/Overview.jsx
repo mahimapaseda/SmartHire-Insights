@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowUpRight, FileCheck2, CalendarClock, Database, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, FileCheck2, CalendarClock, Database, TrendingUp, Video, Copy, Check, ExternalLink, X } from 'lucide-react';
 import { candidateStore } from '../utils/candidateStore';
 import { API_URL, getHeaders } from '../config';
 
@@ -26,6 +26,14 @@ const STATUS_META = {
 const Overview = ({ onIngest }) => {
   const [candidates, setCandidates] = useState(candidateStore.getAll());
   const [reqCount, setReqCount] = useState(0);
+  
+  // Google Meet integration state
+  const [showMeetModal, setShowMeetModal] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState('Sarah Chen');
+  const [meetLink, setMeetLink] = useState('https://meet.google.com/new');
+  const [generated, setGenerated] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   useEffect(() => {
     // Fetch requirements count
@@ -55,6 +63,37 @@ const Overview = ({ onIngest }) => {
     { label: 'Neo4j Entities',    value: String(candidateCount * 6 + reqCount * 3), delta: 'Graph nodes', icon: Database, featured: false },
     { label: 'System Health',     value: '99%',                  delta: 'All services up',       icon: TrendingUp,    featured: false },
   ];
+
+  const allCandidates = candidates.map(c => c.name);
+  if (!allCandidates.includes('Sarah Chen')) {
+    allCandidates.unshift('Sarah Chen');
+  }
+
+  const generateMeetCode = () => {
+    const randLetters = (len) => {
+      let str = '';
+      for (let i = 0; i < len; i++) {
+        str += String.fromCharCode(97 + Math.floor(Math.random() * 26));
+      }
+      return str;
+    };
+    const code = `${randLetters(3)}-${randLetters(4)}-${randLetters(3)}`;
+    setMeetLink(`https://meet.google.com/${code}`);
+    setGenerated(true);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(meetLink);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyInvite = () => {
+    const inviteText = `Hi ${selectedCandidate},\n\nYou have been invited to a video interview with SmartHire Insights.\n\nPlease join the Google Meet session at your scheduled time using the link below:\n${meetLink}\n\nLooking forward to speaking with you!\nBest regards,\nRecruitment Team`;
+    navigator.clipboard.writeText(inviteText);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2000);
+  };
 
   return (
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -90,7 +129,15 @@ const Overview = ({ onIngest }) => {
           <p style={{ fontWeight: '700', fontSize: '1rem', lineHeight: '1.3' }}>Interview with<br />Sarah Chen</p>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Time: 02:00 pm – 04:00 pm</p>
         </div>
-        <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem' }}>
+        <button 
+          className="btn-primary" 
+          style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem', gap: '0.4rem' }}
+          onClick={() => {
+            setSelectedCandidate('Sarah Chen');
+            setShowMeetModal(true);
+          }}
+        >
+          <Video size={14} />
           Start Interview
         </button>
       </div>
@@ -106,6 +153,191 @@ const Overview = ({ onIngest }) => {
         </div>
       </div>
     </div>
+
+    {/* ── Google Meet Integration Modal ── */}
+    {showMeetModal && (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15,23,42,0.3)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }} onClick={() => {
+        setShowMeetModal(false);
+        setGenerated(false);
+      }}>
+        <div style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-2xl)',
+          padding: '1.75rem',
+          width: '92%',
+          maxWidth: '460px',
+          boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          overflow: 'hidden'
+        }} onClick={e => e.stopPropagation()}>
+          
+          {/* Top Multi-color Google Meet Accent Bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: '4px',
+            background: 'linear-gradient(90deg, #4285F4 25%, #EA4335 25% 50%, #FBBC05 50% 75%, #34A853 75%)'
+          }} />
+
+          {/* Modal Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'rgba(66, 133, 244, 0.1)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Video size={18} color="#4285F4" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>Start Google Meet</h3>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>Instant recruiter link & candidate invite</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                setShowMeetModal(false);
+                setGenerated(false);
+              }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: '4px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <hr style={{ border: 'none', height: '1px', background: 'var(--border)', margin: 0 }} />
+
+          {/* Candidate Dropdown */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+            <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Select Candidate</label>
+            <select 
+              value={selectedCandidate} 
+              onChange={e => setSelectedCandidate(e.target.value)}
+              style={{
+                padding: '0.625rem 0.75rem', borderRadius: 'var(--r-md)',
+                background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none',
+                width: '100%'
+              }}
+            >
+              {allCandidates.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Link Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+            <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Google Meet URL</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input 
+                type="text" 
+                readOnly 
+                value={meetLink}
+                style={{
+                  flex: 1, padding: '0.625rem 0.75rem', borderRadius: 'var(--r-md)',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)', fontSize: '0.82rem', outline: 'none',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              />
+              <button 
+                onClick={handleCopyLink}
+                style={{
+                  padding: '0 0.75rem', borderRadius: 'var(--r-md)',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                  color: 'var(--text-primary)', cursor: 'pointer', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', transition: 'var(--transition)'
+                }}
+                title="Copy meeting link"
+              >
+                {copiedLink ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Call to actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginTop: '0.25rem' }}>
+            {!generated ? (
+              <button 
+                className="btn-primary" 
+                onClick={generateMeetCode}
+                style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', gap: '0.5rem' }}
+              >
+                <Video size={16} />
+                Generate Instant Meeting Link
+              </button>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
+                  <button 
+                    onClick={handleCopyInvite}
+                    style={{
+                      padding: '0.75rem', borderRadius: 'var(--r-lg)',
+                      background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                      color: 'var(--text-primary)', cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                      fontWeight: '600', fontSize: '0.8rem', transition: 'var(--transition)'
+                    }}
+                  >
+                    {copiedInvite ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
+                    {copiedInvite ? 'Copied Invite!' : 'Copy Invitation'}
+                  </button>
+
+                  <a 
+                    href={meetLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '0.75rem', borderRadius: 'var(--r-lg)',
+                      background: 'linear-gradient(135deg, #4285F4 0%, #357ae8 100%)',
+                      color: '#fff', cursor: 'pointer', display: 'flex', textDecoration: 'none',
+                      alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                      fontWeight: '600', fontSize: '0.8rem', transition: 'var(--transition)',
+                      boxShadow: '0 4px 12px rgba(66,133,244,0.3)'
+                    }}
+                  >
+                    Launch Meet
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    <style>{`
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { transform: translateY(12px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    `}</style>
 
     {/* ── Bottom row: Activity + Progress ── */}
     <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1rem' }}>
