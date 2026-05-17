@@ -55,17 +55,21 @@ const Candidates = ({ onSelectCandidate }) => {
     filtered.forEach(c => {
       let groupName = 'General Talent Pool';
       
-      const matchingReq = activeRequirements.find(req => 
-        c.role.toLowerCase().includes(req.title.toLowerCase()) || 
-        req.title.toLowerCase().includes(c.role.toLowerCase())
-      );
-
-      if (matchingReq) {
-        groupName = matchingReq.title;
-      } else if (activeRequirements.length > 0 && c.match > 60) {
-        groupName = activeRequirements[0].title;
+      if (activeRequirements.length === 0) {
+        groupName = 'General Talent Pool';
       } else {
-        groupName = c.role || 'Unspecified Role';
+        const matchingReq = activeRequirements.find(req => 
+          c.role.toLowerCase().includes(req.title.toLowerCase()) || 
+          req.title.toLowerCase().includes(c.role.toLowerCase())
+        );
+
+        if (matchingReq) {
+          groupName = matchingReq.title;
+        } else if (c.match > 60) {
+          groupName = activeRequirements[0].title;
+        } else {
+          groupName = c.role || 'Unspecified Role';
+        }
       }
 
       if (!groups[groupName]) groups[groupName] = [];

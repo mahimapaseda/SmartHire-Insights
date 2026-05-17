@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen, FileUp, Users, Share2, Camera, Mic,
   BarChart2, Settings, ChevronDown, ChevronUp,
   ExternalLink, MessageCircle, Mail,
-  CheckCircle2, AlertTriangle, Zap, Database,
+  CheckCircle2, AlertTriangle, Zap, Database, RefreshCw
 } from 'lucide-react';
 import EvaluationMetrics from './EvaluationMetrics';
+import { API_URL, getHeaders } from '../config';
 
 /* ── FAQ data ─────────────────────────────────────────────────── */
 const FAQS = [
@@ -109,6 +110,45 @@ const SHORTCUTS = [
 ══════════════════════════════════════════════════════════════ */
 const Help = () => {
   const [openFaq, setOpenFaq] = useState(null);
+  const [backendStatus, setBackendStatus] = useState('checking');
+  const [neo4jStatus, setNeo4jStatus] = useState('checking');
+
+  useEffect(() => {
+    let active = true;
+    const checkStatuses = async () => {
+      // 1. Check Flask Backend
+      try {
+        const res = await fetch(`${API_URL}/api/ping`, { headers: getHeaders() });
+        if (res.ok && active) {
+          setBackendStatus('online');
+        } else if (active) {
+          setBackendStatus('offline');
+        }
+      } catch {
+        if (active) setBackendStatus('offline');
+      }
+
+      // 2. Check Neo4j Status
+      try {
+        const res = await fetch(`${API_URL}/api/neo4j-status`, { headers: getHeaders() });
+        if (res.ok && active) {
+          setNeo4jStatus('online');
+        } else if (active) {
+          setNeo4jStatus('offline');
+        }
+      } catch {
+        if (active) setNeo4jStatus('offline');
+      }
+    };
+
+    checkStatuses();
+    const interval = setInterval(checkStatuses, 10000); // Check every 10 seconds
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="animate-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '900px' }}>
@@ -145,7 +185,6 @@ const Help = () => {
             { id: 'guides',    label: 'Getting Started', icon: Zap,         color: '#1a5c38' },
             { id: 'faq',       label: 'FAQ',             icon: MessageCircle,color: '#3b82f6' },
             { id: 'shortcuts', label: 'Shortcuts',       icon: Settings,     color: '#8b5cf6' },
-            { id: 'contact',   label: 'Contact',         icon: Mail,         color: '#f59e0b' },
           ].map(({ id, label, icon: Icon, color }) => (
             <a
               key={id}
@@ -240,11 +279,31 @@ const Help = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {[
               { label: 'Frontend (React)',         status: 'online',  note: 'Running on localhost:5173' },
-              { label: 'Python Flask Backend',     status: 'offline', note: 'Not started — run python app.py' },
-              { label: 'Neo4j Graph Database',     status: 'offline', note: 'Not connected — configure in Settings' },
-              { label: 'FER (OpenCV + FER)',       status: 'online',  note: 'Real analysis via POST /api/face-analysis' },
-              { label: 'Voice Stress (librosa)',   status: 'online',  note: 'Real acoustics via POST /api/voice-analysis' },
-              { label: 'NLTK preprocessing',     status: 'online',  note: 'Tokenization & lemmatization in CV pipeline' },
+              { 
+                label: 'Python Flask Backend',     
+                status: backendStatus, 
+                note: backendStatus === 'online' ? 'Flask server reachable on port 5000' : 'Not started — run python app.py' 
+              },
+              { 
+                label: 'Neo4j Graph Database',     
+                status: neo4jStatus, 
+                note: neo4jStatus === 'online' ? 'Connected to graph instance on port 7687' : 'Not connected — configure in Settings' 
+              },
+              { 
+                label: 'FER (OpenCV + FER)',       
+                status: backendStatus,  
+                note: backendStatus === 'online' ? 'Real analysis via POST /api/face-analysis' : 'Not available — backend offline' 
+              },
+              { 
+                label: 'Voice Stress (librosa)',   
+                status: backendStatus,  
+                note: backendStatus === 'online' ? 'Real acoustics via POST /api/voice-analysis' : 'Not available — backend offline' 
+              },
+              { 
+                label: 'NLTK preprocessing',     
+                status: backendStatus,  
+                note: backendStatus === 'online' ? 'Tokenization & lemmatization in CV pipeline' : 'Not available — backend offline' 
+              },
               { label: 'D3.js visualization',      status: 'online',  note: 'Graph Search → D3.js tab' },
             ].map(s => (
               <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -252,34 +311,13 @@ const Help = () => {
                   <p style={{ fontSize: '0.85rem', fontWeight: '600' }}>{s.label}</p>
                   <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.note}</p>
                 </div>
-                <span className={`badge ${s.status === 'online' ? 'badge-success' : s.status === 'mock' ? 'badge-warning' : 'badge-danger'}`}>
-                  {s.status === 'online' ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />}
-                  {s.status === 'online' ? 'Online' : s.status === 'mock' ? 'Mock Mode' : 'Offline'}
+                <span className={`badge ${s.status === 'online' ? 'badge-success' : s.status === 'checking' ? 'badge-warning' : 'badge-danger'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  {s.status === 'online' ? <CheckCircle2 size={10} /> : s.status === 'checking' ? <RefreshCw size={10} className="animate-spin" /> : <AlertTriangle size={10} />}
+                  {s.status === 'online' ? 'Online' : s.status === 'checking' ? 'Checking...' : 'Offline'}
                 </span>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Contact */}
-      <div id="contact">
-        <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem' }}>Contact & Support</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <ContactCard
-            icon={<Mail size={18} color="#1a5c38" />}
-            title="Mahima — Frontend"
-            desc="UI, Face Recognition API, Voice API, Result Analysis"
-            contact="mahima@smarthire.ai"
-            bg="rgba(26,92,56,0.08)"
-          />
-          <ContactCard
-            icon={<Database size={18} color="#3b82f6" />}
-            title="Anuruddha — Backend"
-            desc="NLP Model, PDF Extraction, Neo4j Mapping, Screening"
-            contact="anuruddha@smarthire.ai"
-            bg="rgba(59,130,246,0.08)"
-          />
         </div>
       </div>
 
@@ -330,20 +368,6 @@ const FaqItem = ({ faq, open, onToggle }) => (
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.65', paddingTop: '1rem' }}>{faq.a}</p>
       </div>
     )}
-  </div>
-);
-
-/* ── Contact card ─────────────────────────────────────────────── */
-const ContactCard = ({ icon, title, desc, contact, bg }) => (
-  <div className="card" style={{ padding: '1.25rem' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-      <div style={{ width: '38px', height: '38px', borderRadius: 'var(--r-md)', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {icon}
-      </div>
-      <p style={{ fontWeight: '700', fontSize: '0.88rem' }}>{title}</p>
-    </div>
-    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.625rem', lineHeight: '1.5' }}>{desc}</p>
-    <p style={{ fontSize: '0.78rem', color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{contact}</p>
   </div>
 );
 

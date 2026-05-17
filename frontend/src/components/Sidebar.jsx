@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, FileUp, Users, ClipboardList,
-  Bell, Settings as SettingsIcon, HelpCircle, LogOut, X, Camera, Mic, BarChart2
+  Bell, Settings as SettingsIcon, HelpCircle, LogOut, X, Camera, Mic, BarChart2,
+  CheckCircle2, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL, getHeaders } from '../config';
 
 const Logo = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
@@ -12,6 +14,21 @@ const Logo = () => (
     <circle cx="16" cy="16" r="4.5" fill="#fff"/>
     <path d="M16 6.5 Q19.5 11 16 16 Q12.5 11 16 6.5Z" fill="#22c55e" opacity="0.75"/>
   </svg>
+);
+
+const PulseStyles = () => (
+  <style dangerouslySetInnerHTML={{__html: `
+    @keyframes pulse-green {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.8); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    @keyframes pulse-red {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  `}} />
 );
 
 const MENU_NAV = [
@@ -35,6 +52,31 @@ const GENERAL_NAV = [
 
 const Sidebar = ({ activeTab, goTo, sidebarOpen, setSidebarOpen, unreadCount, selectedCandidate }) => {
   const navigate = useNavigate();
+  const [status, setStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+
+  useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/ping`, { headers: getHeaders() });
+        if (res.ok && active) {
+          setStatus('online');
+        } else if (active) {
+          setStatus('offline');
+        }
+      } catch {
+        if (active) setStatus('offline');
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 10000); // Check every 10 seconds
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <aside
@@ -55,6 +97,8 @@ const Sidebar = ({ activeTab, goTo, sidebarOpen, setSidebarOpen, unreadCount, se
         overflowY: 'auto',
       }}
     >
+      <PulseStyles />
+      
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '0.5rem', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
@@ -126,35 +170,100 @@ const Sidebar = ({ activeTab, goTo, sidebarOpen, setSidebarOpen, unreadCount, se
         </button>
       </nav>
 
-      {/* Bottom promo card */}
+      {/* Dynamic Connection Status Card */}
       <div style={{
         marginTop: 'auto',
         paddingTop: '2rem',
         borderRadius: 'var(--r-xl)',
-        background: 'linear-gradient(145deg, #1a5c38 0%, #0d3320 100%)',
+        background: status === 'online'
+          ? 'linear-gradient(145deg, #1b4d3e 0%, #0c2b22 100%)'
+          : status === 'offline'
+            ? 'linear-gradient(145deg, #7f1d1d 0%, #450a0a 100%)'
+            : 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
         padding: '1.25rem',
         color: '#fff',
         position: 'relative',
         overflow: 'hidden',
+        border: status === 'online'
+          ? '1px solid rgba(34, 197, 94, 0.2)'
+          : status === 'offline'
+            ? '1px solid rgba(239, 68, 68, 0.2)'
+            : '1px solid rgba(148, 163, 184, 0.1)',
+        transition: 'all 0.4s ease',
       }}>
-        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(34,197,94,0.15)' }} />
-        <div style={{ position: 'absolute', bottom: '-10px', left: '-10px', width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(34,197,94,0.1)' }} />
-        <p style={{ fontSize: '0.85rem', fontWeight: '700', marginBottom: '0.3rem', lineHeight: '1.3', position: 'relative' }}>
-          Connect your <span style={{ color: '#4ade80' }}>Backend</span>
+        {/* Decorative circle shapes */}
+        <div style={{
+          position: 'absolute',
+          top: '-20px',
+          right: '-20px',
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          background: status === 'online'
+            ? 'rgba(34,197,94,0.12)'
+            : status === 'offline'
+              ? 'rgba(239,68,68,0.1)'
+              : 'rgba(148,163,184,0.06)',
+          transition: 'all 0.4s ease',
+        }} />
+
+        {/* Pulse indicator & title row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', position: 'relative' }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: status === 'online' ? '#22c55e' : status === 'offline' ? '#ef4444' : '#94a3b8',
+            animation: status === 'online' ? 'pulse-green 2s infinite' : status === 'offline' ? 'pulse-red 2s infinite' : 'none',
+          }} />
+          <span style={{ fontSize: '0.85rem', fontWeight: '800', letterSpacing: '-0.01em' }}>
+            {status === 'online' ? 'System Online' : status === 'offline' ? 'System Offline' : 'Verifying Link...'}
+          </span>
+        </div>
+
+        {/* Status description text */}
+        <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.7)', marginBottom: '1rem', lineHeight: '1.4', position: 'relative' }}>
+          {status === 'online'
+            ? 'Connected to Neo4j & Python NLP pipeline.'
+            : status === 'offline'
+              ? 'Unable to reach the backend services.'
+              : 'Checking API health & database nodes.'}
         </p>
-        <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)', marginBottom: '1rem', lineHeight: '1.4', position: 'relative' }}>
-          Link Neo4j & Python NLP engine.
-        </p>
+
+        {/* Dynamic button action */}
         <button style={{
-          background: '#22c55e', color: '#fff',
-          border: 'none', borderRadius: 'var(--r-sm)',
-          padding: '0.45rem 1rem', fontSize: '0.78rem', fontWeight: '700',
-          cursor: 'pointer', position: 'relative',
-          transition: 'var(--transition)',
+          background: status === 'online' ? 'rgba(255,255,255,0.1)' : '#ef4444',
+          color: '#fff',
+          border: status === 'online' ? '1px solid rgba(255,255,255,0.2)' : 'none',
+          borderRadius: 'var(--r-sm)',
+          padding: '0.45rem 1rem',
+          fontSize: '0.78rem',
+          fontWeight: '700',
+          cursor: 'pointer',
+          position: 'relative',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
         }}
           onClick={() => goTo('settings')}
         >
-          Configure
+          {status === 'online' ? (
+            <>
+              <CheckCircle2 size={13} />
+              Settings
+            </>
+          ) : status === 'offline' ? (
+            <>
+              <AlertCircle size={13} />
+              Configure
+            </>
+          ) : (
+            <>
+              <RefreshCw size={13} className="animate-spin" />
+              Settings
+            </>
+          )}
         </button>
       </div>
     </aside>
