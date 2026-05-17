@@ -325,7 +325,20 @@ def extract_text_from_pdf(uploaded_file):
 
 def extract_text_from_docx(file_stream):
     doc = docx.Document(file_stream)
-    return "\n".join([para.text for para in doc.paragraphs])
+    text_parts = []
+    for block in doc.element.body:
+        if block.tag.endswith('p'):
+            p = docx.text.paragraph.Paragraph(block, doc)
+            if p.text.strip():
+                text_parts.append(p.text)
+        elif block.tag.endswith('tbl'):
+            t = docx.table.Table(block, doc)
+            for row in t.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        if para.text.strip():
+                            text_parts.append(para.text)
+    return "\n".join(text_parts)
 
 
 # =========================================================
@@ -420,10 +433,6 @@ def extract_name(text):
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     if not lines: return "Unknown Candidate"
 
-    # Strategy 1: NLP Entity Recognition (PERSON)
-    combined = " ".join(lines[:15])
-    doc      = nlp(combined)
-
     blacklist = {
         "curriculum vitae", "resume", "cv", "reference", "references",
         "profile", "summary", "objective", "personal details", "name",
@@ -431,18 +440,7 @@ def extract_name(text):
         "contact", "details", "address", "declaration", "phone", "email"
     }
 
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            candidate_name = ent.text.strip()
-            # Clean name from common artifacts
-            candidate_name = re.sub(r'^(Name|Name:)\s*', '', candidate_name, flags=re.IGNORECASE)
-            words = candidate_name.split()
-            if (2 <= len(words) <= 4
-                    and candidate_name.lower() not in blacklist
-                    and not re.search(r'[@\d#\\/]', candidate_name)):
-                return candidate_name.title()
-
-    # Strategy 2: First line analysis (common in professional resumes)
+    # Strategy 1: First line analysis (common in professional resumes - highly precise)
     job_title_words = {
         "engineer", "developer", "analyst", "manager", "consultant",
         "intern", "trainee", "lead", "architect", "designer", "officer",
@@ -459,6 +457,21 @@ def extract_name(text):
                 continue
             if line.lower() not in blacklist and not re.search(r'\d', line):
                 return line.title()
+
+    # Strategy 2: NLP Entity Recognition (PERSON - fallback)
+    combined = " ".join(lines[:15])
+    doc      = nlp(combined)
+
+    for ent in doc.ents:
+        if ent.label_ == "PERSON":
+            candidate_name = ent.text.strip()
+            # Clean name from common artifacts
+            candidate_name = re.sub(r'^(Name|Name:)\s*', '', candidate_name, flags=re.IGNORECASE)
+            words = candidate_name.split()
+            if (2 <= len(words) <= 4
+                    and candidate_name.lower() not in blacklist
+                    and not re.search(r'[@\d#\\/]', candidate_name)):
+                return candidate_name.title()
 
     # Strategy 3: Email-based fallback (if name extraction fails)
     email = extract_email(text)

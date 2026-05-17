@@ -36,12 +36,17 @@ def _ensure_nltk_data() -> None:
 
 
 def preprocess_cv_text(text: str) -> str:
-    """Normalize whitespace and return cleaned text (original casing preserved in output)."""
+    """Normalize whitespace within lines and return cleaned text, preserving original casing and newlines."""
     if not text or not text.strip():
         return ""
     _ensure_nltk_data()
-    cleaned = re.sub(r"\s+", " ", text).strip()
-    return cleaned
+    # Normalize horizontal spacing (spaces, tabs) per line, preserving newlines
+    lines = []
+    for line in text.splitlines():
+        cleaned_line = re.sub(r"[ \t\r\f\v]+", " ", line).strip()
+        if cleaned_line:
+            lines.append(cleaned_line)
+    return "\n".join(lines)
 
 
 def normalize_for_match(text: str) -> str:
